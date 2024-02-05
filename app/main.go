@@ -20,6 +20,7 @@ func main() {
 
 	r.HandleFunc("/api/v1/list", basicAuth(handleListOfFeeds)).Methods("GET")
 	r.HandleFunc("/api/v1/feed", basicAuth(handleRSSFeed)).Methods("GET")
+	r.HandleFunc("/api/v1/get_feed", handleGetRSSFeed).Methods("GET")
 	r.HandleFunc("/api/v1/add", basicAuth(handleAddFeed)).Methods("POST")
 	r.HandleFunc("/api/v1/delete", basicAuth(handleDeleteFeed)).Methods("GET")
 	r.HandleFunc("/api/v1/add_lazy", basicAuth(handleAddFeedLazy)).Methods("POST")
@@ -65,6 +66,33 @@ func handleListOfFeeds(w http.ResponseWriter, r *http.Request) {
 	// w.Header().Set("Access-Control-Allow-Origin", "*")
 	// w.Header().Set("Access-Control-Allow-Methods", "*")
 	json.NewEncoder(w).Encode(feeds)
+}
+
+func handleGetRSSFeed(w http.ResponseWriter, r *http.Request) {
+	username := r.URL.Query().Get("username")
+	password := r.URL.Query().Get("password")
+
+	user := db.GetUserFromDB(username)
+	if user.HashedPassword != password {
+		w.Write([]byte("No authentication provided"))
+		return
+	}
+
+	items := db.GetUserItems(user.ID)
+
+	var rssItems []rss.Item
+	for _, item := range items {
+		rssItems = append(rssItems, rss.Item{
+			Title:       item.Title,
+			Link:        item.Link,
+			Description: item.Text,
+			PubDate:     item.Date.Format(time.RFC1123),
+		})
+	}
+	rssFeed := rss.GenerateRSS(rssItems)
+
+	w.Header().Set("Content-Type", "application/rss+xml")
+	xml.NewEncoder(w).Encode(rssFeed)
 }
 
 func handleRSSFeed(w http.ResponseWriter, r *http.Request) {
