@@ -109,6 +109,7 @@ func handleRSSFeed(w http.ResponseWriter, r *http.Request) {
 	var rssItems []rss.Item
 	for _, item := range items {
 		rssItems = append(rssItems, rss.Item{
+			ID:          item.ID,
 			Title:       item.Title,
 			Link:        item.Link,
 			Description: item.Text,
