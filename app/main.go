@@ -79,21 +79,7 @@ func handleGetRSSFeed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	items := db.GetUserItems(user.ID)
-
-	var rssItems []rss.Item
-	for _, item := range items {
-		rssItems = append(rssItems, rss.Item{
-			Title:       item.Title,
-			Link:        item.Link,
-			Description: item.Text,
-			PubDate:     item.Date.Format(time.RFC1123),
-		})
-	}
-	rssFeed := rss.GenerateRSS(rssItems)
-
-	w.Header().Set("Content-Type", "application/rss+xml")
-	xml.NewEncoder(w).Encode(rssFeed)
+	responseWithRSSFeed(w, user)
 }
 
 func handleRSSFeed(w http.ResponseWriter, r *http.Request) {
@@ -105,7 +91,27 @@ func handleRSSFeed(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user := db.GetUserFromDB(userName)
+	responseWithRSSFeed(w, user)
+}
+
+func responseWithRSSFeed(w http.ResponseWriter, user models.User) {
 	items := db.GetUserItems(user.ID)
+	deletedIDs := db.GetUserDeletedItemsIDs(user.ID)
+
+	var filteredItems []models.Item
+
+	deletedIDMap := make(map[int]bool)
+	for _, id := range deletedIDs {
+		deletedIDMap[id] = true
+	}
+
+	for _, item := range items {
+		if !deletedIDMap[item.ID] {
+			filteredItems = append(filteredItems, item)
+		}
+	}
+
+	items = filteredItems
 
 	var rssItems []rss.Item
 	for _, item := range items {
@@ -121,6 +127,7 @@ func handleRSSFeed(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/rss+xml")
 	xml.NewEncoder(w).Encode(rssFeed)
+
 }
 
 func handleAddFeed(w http.ResponseWriter, r *http.Request) {
