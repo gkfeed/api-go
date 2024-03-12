@@ -12,11 +12,32 @@ import (
 
 func GetUserItems(userID int) (items []models.Item) {
 	query := fmt.Sprintf(
-		"SELECT item.* FROM item INNER JOIN feed ON item.feed_id = feed.id where feed.user_id = %d;",
+		"SELECT item.* FROM item INNER JOIN feed ON item.feed_id = feed.id where feed.user_id = %d and (feed.user_id, item.id) not in (select user_id, item_id from deleted_items);",
 		userID,
 	)
 
 	return getItems(query)
+}
+
+func InsertItemsIntoDeletedItems(userID int, itemIDs []int) {
+	db, err := sql.Open("sqlite3", "../data/db.sqlite")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	stmtIns, err := db.Prepare("INSERT INTO deleted_items (user_id, item_id) VALUES( ?, ? )")
+	if err != nil {
+		panic(err.Error())
+	}
+	defer stmtIns.Close()
+
+	for _, id := range itemIDs {
+		_, err := stmtIns.Exec(userID, id)
+		if err != nil {
+			panic(err.Error())
+		}
+	}
 }
 
 func GetItemByID(id int) (item models.Item) {

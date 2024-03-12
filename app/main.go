@@ -24,6 +24,7 @@ func main() {
 	r.HandleFunc("/api/v1/add", basicAuth(handleAddFeed)).Methods("POST")
 	r.HandleFunc("/api/v1/delete", basicAuth(handleDeleteFeed)).Methods("GET")
 	r.HandleFunc("/api/v1/add_lazy", basicAuth(handleAddFeedLazy)).Methods("POST")
+	r.HandleFunc("/api/v1/add_deleted_items", basicAuth(handleAddDeletedItems)).Methods("POST")
 	r.HandleFunc("/api/v1/item", handleGetItemByID).Methods("GET")
 
 	corsHandler := cors.New(cors.Options{
@@ -244,4 +245,25 @@ func handleGetItemByID(w http.ResponseWriter, r *http.Request) {
 			item, feed,
 		},
 	)
+}
+
+func handleAddDeletedItems(w http.ResponseWriter, r *http.Request) {
+	userName, _, ok := r.BasicAuth()
+
+	if !ok {
+		w.Write([]byte("No authentication provided"))
+		return
+	}
+
+	var input struct {
+		ItemIDs []int `json:"itemIds"`
+	}
+	err := json.NewDecoder(r.Body).Decode(&input)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	user := db.GetUserFromDB(userName)
+	db.InsertItemsIntoDeletedItems(user.ID, input.ItemIDs)
 }
