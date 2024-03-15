@@ -96,22 +96,6 @@ func handleRSSFeed(w http.ResponseWriter, r *http.Request) {
 
 func responseWithRSSFeed(w http.ResponseWriter, user models.User) {
 	items := db.GetUserItems(user.ID)
-	deletedIDs := db.GetUserDeletedItemsIDs(user.ID)
-
-	var filteredItems []models.Item
-
-	deletedIDMap := make(map[int]bool)
-	for _, id := range deletedIDs {
-		deletedIDMap[id] = true
-	}
-
-	for _, item := range items {
-		if !deletedIDMap[item.ID] {
-			filteredItems = append(filteredItems, item)
-		}
-	}
-
-	items = filteredItems
 
 	var rssItems []rss.Item
 	for _, item := range items {

@@ -12,7 +12,7 @@ import (
 
 func GetUserItems(userID int) (items []models.Item) {
 	query := fmt.Sprintf(
-		"SELECT item.* FROM item INNER JOIN feed ON item.feed_id = feed.id where feed.user_id = %d;",
+		"SELECT item.* FROM item INNER JOIN feed ON item.feed_id = feed.id where feed.user_id = %d AND item.id NOT IN (SELECT item_id FROM deleted_items);",
 		userID,
 	)
 
