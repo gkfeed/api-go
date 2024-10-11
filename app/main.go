@@ -26,6 +26,7 @@ func main() {
 	r.HandleFunc("/api/v1/add_lazy", basicAuth(handleAddFeedLazy)).Methods("POST")
 	r.HandleFunc("/api/v1/add_deleted_items", basicAuth(handleAddDeletedItems)).Methods("POST")
 	r.HandleFunc("/api/v1/item", handleGetItemByID).Methods("GET")
+	r.HandleFunc("/api/v1/get_items", basicAuth(handlGetItems)).Methods("GET")
 
 	corsHandler := cors.New(cors.Options{
 		AllowedOrigins:   []string{"http://localhost", "http://localhost:4200", "HTTP://localhost:8086"},
@@ -257,4 +258,25 @@ func handleAddDeletedItems(w http.ResponseWriter, r *http.Request) {
 
 	user := db.GetUserFromDB(userName)
 	db.InsertItemsIntoDeletedItems(user.ID, input.ItemIDs)
+}
+
+func handlGetItems(w http.ResponseWriter, r *http.Request) {
+	userName, _, ok := r.BasicAuth()
+
+	if !ok {
+		w.Write([]byte("No authentication provided"))
+		return
+	}
+
+	user := db.GetUserFromDB(userName)
+	items := db.GetUserItems(user.ID)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(
+		struct {
+			Items []models.Item `json:"items"`
+		}{
+			items,
+		},
+	)
 }
