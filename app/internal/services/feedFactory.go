@@ -2,7 +2,7 @@ package services
 
 import (
 	"errors"
-	"gakawarstone/rest-api/models"
+	"gkfeed/api/internal/models"
 	"strings"
 )
 

@@ -3,7 +3,7 @@ package db
 import (
 	"database/sql"
 	"fmt"
-	"gakawarstone/rest-api/models"
+	"gkfeed/api/internal/models"
 	"log"
 	"time"
 

@@ -2,7 +2,7 @@ package db
 
 import (
 	"fmt"
-	"gakawarstone/rest-api/models"
+	"gkfeed/api/internal/models"
 	"log"
 )
 
