@@ -4,7 +4,7 @@ import (
 	"encoding/xml"
 	"gkfeed/api/internal/db"
 	"gkfeed/api/internal/models"
-	"gkfeed/api/services/rss"
+	"gkfeed/api/internal/services/rss"
 	"net/http"
 	"time"
 )
