@@ -18,3 +18,9 @@ install-lint:
 
 dev:
 	cd app && go run ./cmd/api/main.go
+
+merge-to-master:
+	git checkout master
+	git merge dev
+	git push origin master
+	git checkout dev
