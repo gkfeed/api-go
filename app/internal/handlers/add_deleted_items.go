@@ -10,7 +10,10 @@ func HandleAddDeletedItems(w http.ResponseWriter, r *http.Request) {
 	userName, _, ok := r.BasicAuth()
 
 	if !ok {
-		w.Write([]byte("No authentication provided"))
+		if _, err := w.Write([]byte("No authentication provided")); err != nil {
+			http.Error(w, "Failed to write response", http.StatusInternalServerError)
+			return
+		}
 		return
 	}
 

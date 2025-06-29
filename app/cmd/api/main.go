@@ -29,5 +29,7 @@ func main() {
 		AllowCredentials: true,
 	}).Handler(r)
 
-	http.ListenAndServe(":8086", corsHandler)
+	if err := http.ListenAndServe(":8086", corsHandler); err != nil {
+		panic(err)
+	}
 }

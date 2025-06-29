@@ -73,11 +73,15 @@ func TestHandleAddFeedLazy(t *testing.T) {
 	expected := `{"created":true,"item":{"id":1,"title":"Test Feed","type":"rss","url":"https://hdrezka.me/series/thriller/41647-igra-v-kalmara-2021-latest.html","userid":0}}`
 	// Unmarshal and then marshal again to handle potential differences in whitespace/order
 	var actual map[string]interface{}
-	json.Unmarshal(rr.Body.Bytes(), &actual)
+	if err := json.Unmarshal(rr.Body.Bytes(), &actual); err != nil {
+		t.Fatalf("Failed to unmarshal actual response: %v", err)
+	}
 	actualJSON, _ := json.Marshal(actual)
 
 	var expectedMap map[string]interface{}
-	json.Unmarshal([]byte(expected), &expectedMap)
+	if err := json.Unmarshal([]byte(expected), &expectedMap); err != nil {
+		t.Fatalf("Failed to unmarshal expected response: %v", err)
+	}
 	expectedJSON, _ := json.Marshal(expectedMap)
 
 	if string(actualJSON) != string(expectedJSON) {

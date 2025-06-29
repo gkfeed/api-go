@@ -22,12 +22,15 @@ func HandleGetItemByID(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET,POST,OPTIONS,DELETE,PUT")
-	json.NewEncoder(w).Encode(
+	if err := json.NewEncoder(w).Encode(
 		struct {
 			Item models.Item `json:"item"`
 			Feed models.Feed `json:"feed"`
 		}{
 			item, feed,
 		},
-	)
+	); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }

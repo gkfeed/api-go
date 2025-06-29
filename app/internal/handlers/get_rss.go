@@ -16,7 +16,10 @@ func HandleGetRSSFeed(w http.ResponseWriter, r *http.Request) {
 
 	user := db.GetUserFromDB(username)
 	if user.HashedPassword != password {
-		w.Write([]byte("No authentication provided"))
+		if _, err := w.Write([]byte("No authentication provided")); err != nil {
+			http.Error(w, "Failed to write response", http.StatusInternalServerError)
+			return
+		}
 		return
 	}
 
@@ -27,7 +30,10 @@ func HandleRSSFeed(w http.ResponseWriter, r *http.Request) {
 	userName, _, ok := r.BasicAuth()
 
 	if !ok {
-		w.Write([]byte("No authentication provided"))
+		if _, err := w.Write([]byte("No authentication provided")); err != nil {
+			http.Error(w, "Failed to write response", http.StatusInternalServerError)
+			return
+		}
 		return
 	}
 
@@ -51,6 +57,9 @@ func responseWithRSSFeed(w http.ResponseWriter, user models.User) {
 	rssFeed := rss.GenerateRSS(rssItems)
 
 	w.Header().Set("Content-Type", "application/rss+xml")
-	xml.NewEncoder(w).Encode(rssFeed)
+	if err := xml.NewEncoder(w).Encode(rssFeed); err != nil {
+		http.Error(w, "Failed to encode RSS feed", http.StatusInternalServerError)
+		return
+	}
 
 }
