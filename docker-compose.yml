@@ -9,3 +9,4 @@ services:
     volumes:
       - ~/.local/share/gkfeed/data:/data
     command: ["/app/main"]
+    restart: always
