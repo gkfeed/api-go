@@ -8,6 +8,12 @@ import (
 	"net/http"
 )
 
+var (
+	dbGetUserFromDB       = db.GetUserFromDB
+	dbAddFeed             = db.AddFeed
+	servicesCreateFromUrl = (&services.FeedFactory{}).CreateFromUrl
+)
+
 func HandleAddFeedLazy(w http.ResponseWriter, r *http.Request) {
 	userName, _, ok := r.BasicAuth()
 
@@ -25,15 +31,14 @@ func HandleAddFeedLazy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	feedFactory := services.FeedFactory{}
-	feedInput, err := feedFactory.CreateFromUrl(input.Url)
+	feedInput, err := servicesCreateFromUrl(input.Url)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	user := db.GetUserFromDB(userName)
-	feed := db.AddFeed(*feedInput, user.ID)
+	user := dbGetUserFromDB(userName)
+	feed := dbAddFeed(*feedInput, user.ID)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(
