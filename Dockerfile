@@ -1,4 +1,4 @@
-FROM golang:1.20-alpine AS build
+FROM golang:1.24-alpine AS build
 
 WORKDIR /app
 
@@ -9,7 +9,7 @@ RUN go mod download
 
 COPY app/ .
 
-RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -o main .
+RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -o main ./cmd/api
 
 
 FROM alpine:latest

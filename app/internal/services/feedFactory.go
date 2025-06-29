@@ -32,6 +32,11 @@ func (f *FeedFactory) recogniseFeedTitle(inputUrl string, feedType string) (stri
 	if feedType == "spoti" {
 		return strings.Split(inputUrl, "/")[len(strings.Split(inputUrl, "/"))-1], nil
 	}
+	if feedType == "rezka" {
+		parts := strings.Split(inputUrl, "/")
+		lastPart := parts[len(parts)-1]
+		return strings.Split(lastPart, ".html")[0], nil
+	}
 	return "", errors.New("Invalid feed type")
 }
 
@@ -41,6 +46,9 @@ func (f *FeedFactory) recogniseFeedUrl(inputUrl string, feedType string) (string
 	}
 	if feedType == "tiktok" {
 		return "https://www.tiktok.com/@" + strings.Split(inputUrl, "@")[1], nil
+	}
+	if feedType == "rezka" {
+		return inputUrl, nil
 	}
 	return "", errors.New("Invalid feed type")
 }
@@ -54,6 +62,9 @@ func (f *FeedFactory) tryRecogniseFeedTypeFromUrl(url string) (string, error) {
 	}
 	if strings.HasPrefix(url, "https://open.spotify.com/artist/") {
 		return "spoti", nil
+	}
+	if strings.HasPrefix(url, "https://hdrezka.me/series/") {
+		return "rezka", nil
 	}
 	return "", errors.New("Invalid url")
 }
