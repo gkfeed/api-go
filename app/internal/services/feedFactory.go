@@ -66,5 +66,8 @@ func (f *FeedFactory) tryRecogniseFeedTypeFromUrl(url string) (string, error) {
 	if strings.HasPrefix(url, "https://hdrezka.me/series/") {
 		return "rezka", nil
 	}
+	if strings.HasPrefix(url, "https://hdrezka.me/films/") {
+		return "rezka", nil
+	}
 	return "", errors.New("Invalid url")
 }
