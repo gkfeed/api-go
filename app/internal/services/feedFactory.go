@@ -29,6 +29,9 @@ func (f *FeedFactory) recogniseFeedTitle(inputUrl string, feedType string) (stri
 	if feedType == "yt" || feedType == "tiktok" {
 		return strings.Split(strings.Split(inputUrl, "@")[1], "/")[0], nil
 	}
+	if feedType == "inst" {
+		return strings.Split(inputUrl, "/")[3], nil
+	}
 	if feedType == "spoti" {
 		return strings.Split(inputUrl, "/")[len(strings.Split(inputUrl, "/"))-1], nil
 	}
@@ -37,11 +40,15 @@ func (f *FeedFactory) recogniseFeedTitle(inputUrl string, feedType string) (stri
 		lastPart := parts[len(parts)-1]
 		return strings.Split(lastPart, ".html")[0], nil
 	}
+	if feedType == "shiki" {
+		parts := strings.Split(inputUrl, "/")
+		return parts[len(parts)-1], nil
+	}
 	return "", errors.New("Invalid feed type")
 }
 
 func (f *FeedFactory) recogniseFeedUrl(inputUrl string, feedType string) (string, error) {
-	if feedType == "yt" || feedType == "spoti" {
+	if feedType == "yt" || feedType == "spoti" || feedType == "inst" {
 		return inputUrl, nil
 	}
 	if feedType == "tiktok" {
@@ -50,12 +57,18 @@ func (f *FeedFactory) recogniseFeedUrl(inputUrl string, feedType string) (string
 	if feedType == "rezka" {
 		return inputUrl, nil
 	}
+	if feedType == "shiki" {
+		return inputUrl, nil
+	}
 	return "", errors.New("Invalid feed type")
 }
 
 func (f *FeedFactory) tryRecogniseFeedTypeFromUrl(url string) (string, error) {
 	if strings.HasPrefix(url, "https://www.youtube.com/@") {
 		return "yt", nil
+	}
+	if strings.HasPrefix(url, "https://www.instagram.com/") {
+		return "inst", nil
 	}
 	if strings.HasPrefix(url, "https://tok.adminforge.de/@") {
 		return "tiktok", nil
@@ -68,6 +81,9 @@ func (f *FeedFactory) tryRecogniseFeedTypeFromUrl(url string) (string, error) {
 	}
 	if strings.HasPrefix(url, "https://hdrezka.me/films/") {
 		return "rezka", nil
+	}
+	if strings.HasPrefix(url, "https://shikimori.one/animes/") {
+		return "shiki", nil
 	}
 	return "", errors.New("Invalid url")
 }
