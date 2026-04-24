@@ -19,6 +19,21 @@ func GetUserItems(userID int) (items []models.Item) {
 	return getItems(query)
 }
 
+func GetUserItemsPage(userID int, cursor *int, limit int) (items []models.Item) {
+	query := fmt.Sprintf(
+		"SELECT item.* FROM item INNER JOIN feed ON item.feed_id = feed.id WHERE feed.user_id = %d AND item.id NOT IN (SELECT item_id FROM deleted_items WHERE user_id = %d)",
+		userID, userID,
+	)
+
+	if cursor != nil {
+		query += fmt.Sprintf(" AND item.id < %d", *cursor)
+	}
+
+	query += fmt.Sprintf(" ORDER BY item.id DESC LIMIT %d;", limit)
+
+	return getItems(query)
+}
+
 func GetUserDeletedItemsIDs(userID int) []int {
 	db, err := sql.Open("sqlite3", "../data/db.sqlite")
 	if err != nil {
