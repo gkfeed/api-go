@@ -41,7 +41,7 @@ func HandleGetItems(w http.ResponseWriter, r *http.Request) {
 	var cursor *int
 	if cursorValue := r.URL.Query().Get("cursor"); cursorValue != "" {
 		parsedCursor, err := strconv.Atoi(cursorValue)
-		if err != nil || parsedCursor <= 0 {
+		if err != nil || parsedCursor < 0 {
 			http.Error(w, "Invalid cursor", http.StatusBadRequest)
 			return
 		}
