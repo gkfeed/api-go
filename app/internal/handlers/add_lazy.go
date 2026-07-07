@@ -15,13 +15,8 @@ var (
 )
 
 func HandleAddFeedLazy(w http.ResponseWriter, r *http.Request) {
-	userName, _, ok := r.BasicAuth()
-
+	userName, ok := basicAuthUserName(w, r)
 	if !ok {
-		if _, err := w.Write([]byte("No authentication provided")); err != nil {
-			http.Error(w, "Failed to write response", http.StatusInternalServerError)
-			return
-		}
 		return
 	}
 
