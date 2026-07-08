@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"encoding/json"
 	"gkfeed/api/internal/db"
 	"gkfeed/api/internal/models"
 	"net/http"
@@ -28,16 +27,8 @@ func HandleDeleteFeed(w http.ResponseWriter, r *http.Request) {
 	}
 	db.DeleteFeedByID(id)
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(
-		struct {
-			Deleted bool        `json:"deleted"`
-			Item    models.Feed `json:"item"`
-		}{
-			true, feed,
-		},
-	); err != nil {
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-		return
-	}
+	respondJSON(w, struct {
+		Deleted bool        `json:"deleted"`
+		Item    models.Feed `json:"item"`
+	}{true, feed})
 }

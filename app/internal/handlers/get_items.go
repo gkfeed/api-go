@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"encoding/json"
 	"gkfeed/api/internal/db"
 	"gkfeed/api/internal/models"
 	"net/http"
@@ -53,9 +52,5 @@ func HandleGetItems(w http.ResponseWriter, r *http.Request) {
 		items = items[:limit]
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(getItemsResponse{Items: items, NextCursor: nextCursor}); err != nil {
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-		return
-	}
+	respondJSON(w, getItemsResponse{Items: items, NextCursor: nextCursor})
 }

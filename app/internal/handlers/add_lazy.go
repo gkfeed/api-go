@@ -38,16 +38,8 @@ func HandleAddFeedLazy(w http.ResponseWriter, r *http.Request) {
 	user := dbGetUserFromDB(userName)
 	feed := dbAddFeed(*feedInput, user.ID)
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(
-		struct {
-			Created bool        `json:"created"`
-			Item    models.Feed `json:"item"`
-		}{
-			true, feed,
-		},
-	); err != nil {
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-		return
-	}
+	respondJSON(w, struct {
+		Created bool        `json:"created"`
+		Item    models.Feed `json:"item"`
+	}{true, feed})
 }
