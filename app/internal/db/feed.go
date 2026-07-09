@@ -1,12 +1,9 @@
 package db
 
 import (
-	"database/sql"
 	"fmt"
 	"gkfeed/api/internal/models"
 	"log"
-
-	_ "github.com/mattn/go-sqlite3"
 )
 
 func GetAllFeeds() (feeds []models.Feed) {
@@ -20,7 +17,7 @@ func GetUserFeeds(userID int) (feeds []models.Feed) {
 
 func getFeeds(query string) (feeds []models.Feed) {
 	// Open a connection to the SQLite database
-	db, err := sql.Open("sqlite3", "../data/db.sqlite")
+	db, err := getDB()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -67,7 +64,7 @@ func getFeeds(query string) (feeds []models.Feed) {
 
 func AddFeed(feedInput models.Feed, userID int) models.Feed {
 	// Open a connection to the SQLite database
-	db, err := sql.Open("sqlite3", "../data/db.sqlite")
+	db, err := getDB()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -97,7 +94,7 @@ func AddFeed(feedInput models.Feed, userID int) models.Feed {
 
 func DeleteFeedByID(id int) {
 	// Open a connection to the SQLite database
-	db, err := sql.Open("sqlite3", "../data/db.sqlite")
+	db, err := getDB()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -111,7 +108,7 @@ func DeleteFeedByID(id int) {
 
 func GetFeedByID(id int) models.Feed {
 	// Open a connection to the SQLite database
-	db, err := sql.Open("sqlite3", "../data/db.sqlite")
+	db, err := getDB()
 	if err != nil {
 		log.Fatal(err)
 	}

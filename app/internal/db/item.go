@@ -1,13 +1,10 @@
 package db
 
 import (
-	"database/sql"
 	"fmt"
 	"gkfeed/api/internal/models"
 	"log"
 	"time"
-
-	_ "github.com/mattn/go-sqlite3"
 )
 
 func GetUserItems(userID int) (items []models.Item) {
@@ -35,7 +32,7 @@ func GetUserItemsPage(userID int, cursor *int, limit int) (items []models.Item) 
 }
 
 func GetUserDeletedItemsIDs(userID int) []int {
-	db, err := sql.Open("sqlite3", "../data/db.sqlite")
+	db, err := getDB()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -64,7 +61,7 @@ func GetUserDeletedItemsIDs(userID int) []int {
 }
 
 func InsertItemsIntoDeletedItems(userID int, itemIDs []int) {
-	db, err := sql.Open("sqlite3", "../data/db.sqlite")
+	db, err := getDB()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -92,7 +89,7 @@ func GetItemByID(id int) (item models.Item) {
 
 func getItems(query string) (items []models.Item) {
 	// Open a connection to the SQLite database
-	db, err := sql.Open("sqlite3", "../data/db.sqlite")
+	db, err := getDB()
 	if err != nil {
 		log.Fatal(err)
 	}
