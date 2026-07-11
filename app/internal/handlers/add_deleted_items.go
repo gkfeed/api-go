@@ -1,13 +1,13 @@
 package handlers
 
 import (
-	"encoding/json"
-	"gkfeed/api/internal/db"
 	"net/http"
+
+	"gkfeed/api/internal/db"
 )
 
 func HandleAddDeletedItems(w http.ResponseWriter, r *http.Request) {
-	userName, ok := basicAuthUserName(w, r)
+	user, ok := authenticatedUser(w, r)
 	if !ok {
 		return
 	}
@@ -15,12 +15,11 @@ func HandleAddDeletedItems(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		ItemIDs []int `json:"itemIds"`
 	}
-	err := json.NewDecoder(r.Body).Decode(&input)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	if !decodeJSON(w, r, &input) {
 		return
 	}
 
-	user := db.GetUserFromDB(userName)
-	db.InsertItemsIntoDeletedItems(user.ID, input.ItemIDs)
+	if err := db.InsertItemsIntoDeletedItems(user.ID, input.ItemIDs); err != nil {
+		writeInternalServerError(w, err)
+	}
 }

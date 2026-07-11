@@ -2,13 +2,20 @@ package db
 
 import (
 	"database/sql"
-	"path/filepath"
+	"errors"
 
 	_ "github.com/mattn/go-sqlite3"
 )
 
-var dbPath = filepath.Join("..", "data", "db.sqlite")
+var dbPath string
+
+func Configure(path string) {
+	dbPath = path
+}
 
 func getDB() (*sql.DB, error) {
+	if dbPath == "" {
+		return nil, errors.New("database is not configured")
+	}
 	return sql.Open("sqlite3", dbPath)
 }

@@ -1,18 +1,21 @@
 package handlers
 
 import (
-	"gkfeed/api/internal/db"
 	"net/http"
+
+	"gkfeed/api/internal/db"
 )
 
 func HandleListOfFeeds(w http.ResponseWriter, r *http.Request) {
-	userName, ok := basicAuthUserName(w, r)
+	user, ok := authenticatedUser(w, r)
 	if !ok {
 		return
 	}
 
-	user := db.GetUserFromDB(userName)
-	feeds := db.GetUserFeeds(user.ID)
-
-	respondJSON(w, feeds)
+	feeds, err := db.GetUserFeeds(user.ID)
+	if err != nil {
+		writeInternalServerError(w, err)
+		return
+	}
+	writeJSON(w, feeds)
 }

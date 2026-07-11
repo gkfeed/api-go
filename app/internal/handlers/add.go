@@ -1,30 +1,28 @@
 package handlers
 
 import (
-	"encoding/json"
+	"net/http"
+
 	"gkfeed/api/internal/db"
 	"gkfeed/api/internal/models"
-	"net/http"
 )
 
 func HandleAddFeed(w http.ResponseWriter, r *http.Request) {
-	userName, ok := basicAuthUserName(w, r)
+	user, ok := authenticatedUser(w, r)
 	if !ok {
 		return
 	}
 
 	var feedInput models.Feed
-	err := json.NewDecoder(r.Body).Decode(&feedInput)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	if !decodeJSON(w, r, &feedInput) {
 		return
 	}
 
-	user := db.GetUserFromDB(userName)
-	feed := db.AddFeed(feedInput, user.ID)
+	feed, err := db.AddFeed(feedInput, user.ID)
+	if err != nil {
+		writeInternalServerError(w, err)
+		return
+	}
 
-	respondJSON(w, struct {
-		Created bool        `json:"created"`
-		Item    models.Feed `json:"item"`
-	}{true, feed})
+	writeJSON(w, feedMutationResponse{Created: true, Item: feed})
 }

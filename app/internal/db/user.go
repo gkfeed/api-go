@@ -2,38 +2,25 @@ package db
 
 import (
 	"fmt"
+
 	"gkfeed/api/internal/models"
-	"log"
 )
 
-func GetUserFromDB(name string) models.User {
-	// Open a connection to the SQLite database
-	db, err := getDB()
+func GetUserFromDB(name string) (models.User, error) {
+	database, err := getDB()
 	if err != nil {
-		log.Fatal(err)
+		return models.User{}, fmt.Errorf("open database: %w", err)
 	}
-	defer db.Close()
+	defer database.Close()
 
-	rows, err := db.Query("SELECT * FROM users WHERE name = ?;", name)
+	var user models.User
+	err = database.QueryRow(
+		"SELECT id, name, password FROM users WHERE name = ?",
+		name,
+	).Scan(&user.ID, &user.Name, &user.HashedPassword)
 	if err != nil {
-		log.Fatal(err)
-	}
-	defer rows.Close()
-
-	if !rows.Next() {
-		fmt.Println("No user with this credentials")
-	}
-	var id int
-	var userName string
-	var hashedPassword string
-	err = rows.Scan(&id, &userName, &hashedPassword)
-	if err != nil {
-		log.Fatal(err)
+		return models.User{}, fmt.Errorf("get user %q: %w", name, err)
 	}
 
-	return models.User{
-		ID:             id,
-		Name:           userName,
-		HashedPassword: hashedPassword,
-	}
+	return user, nil
 }

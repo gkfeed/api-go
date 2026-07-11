@@ -5,7 +5,7 @@ import "encoding/xml"
 type RSS struct {
 	XMLName xml.Name `xml:"rss"`
 	Version string   `xml:"version,attr"`
-	Channel *Channel `xml:"channel"`
+	Channel Channel  `xml:"channel"`
 }
 
 type Channel struct {

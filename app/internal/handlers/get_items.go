@@ -1,10 +1,11 @@
 package handlers
 
 import (
-	"gkfeed/api/internal/db"
-	"gkfeed/api/internal/models"
 	"net/http"
 	"strconv"
+
+	"gkfeed/api/internal/db"
+	"gkfeed/api/internal/models"
 )
 
 const defaultItemsLimit = 100
@@ -15,12 +16,11 @@ type getItemsResponse struct {
 }
 
 func HandleGetItems(w http.ResponseWriter, r *http.Request) {
-	userName, ok := basicAuthUserName(w, r)
+	user, ok := authenticatedUser(w, r)
 	if !ok {
 		return
 	}
 
-	user := db.GetUserFromDB(userName)
 	limit := defaultItemsLimit
 	if limitValue := r.URL.Query().Get("limit"); limitValue != "" {
 		parsedLimit, err := strconv.Atoi(limitValue)
@@ -43,7 +43,11 @@ func HandleGetItems(w http.ResponseWriter, r *http.Request) {
 		cursor = &parsedCursor
 	}
 
-	items := db.GetUserItemsPage(user.ID, cursor, limit+1)
+	items, err := db.GetUserItemsPage(user.ID, cursor, limit+1)
+	if err != nil {
+		writeInternalServerError(w, err)
+		return
+	}
 
 	var nextCursor *int
 	if len(items) > limit {
@@ -52,5 +56,5 @@ func HandleGetItems(w http.ResponseWriter, r *http.Request) {
 		items = items[:limit]
 	}
 
-	respondJSON(w, getItemsResponse{Items: items, NextCursor: nextCursor})
+	writeJSON(w, getItemsResponse{Items: items, NextCursor: nextCursor})
 }

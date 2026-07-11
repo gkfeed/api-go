@@ -3,89 +3,81 @@ package handlers
 import (
 	"bytes"
 	"encoding/json"
-	"gkfeed/api/internal/models"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"gkfeed/api/internal/models"
+	"gkfeed/api/pkg/auth"
 )
 
-// Mock the db and services dependencies for testing
-// In a real project, you might use a mocking library or interfaces.
-
-// Mock for db.GetUserFromDB
-func mockGetUserFromDB(username string) models.User {
-	return models.User{ID: 1, Name: username}
+func mockAddFeed(feed models.Feed, userID int) (models.Feed, error) {
+	feed.ID = 1
+	feed.UserID = userID
+	return feed, nil
 }
 
-// Mock for db.AddFeed
-func mockAddFeed(feed models.Feed, userID int) models.Feed {
-	feed.ID = 1 // Assign a dummy ID
-	return feed
-}
-
-// Mock for services.FeedFactory.CreateFromUrl
-func mockCreateFromUrl(url string) (*models.Feed, error) {
-	return &models.Feed{
+func mockCreateFromURL(url string) (models.Feed, error) {
+	return models.Feed{
 			Title: "Test Feed",
 			Type:  "rss",
-			Url:   url,
+			URL:   url,
 		},
 		nil
 }
 
 func TestHandleAddFeedLazy(t *testing.T) {
-	// Override the actual functions with our mocks for testing
-	originalGetUserFromDB := dbGetUserFromDB
 	originalAddFeed := dbAddFeed
-	originalCreateFromUrl := servicesCreateFromUrl
+	originalCreateFromURL := servicesCreateFromURL
 
-	dbGetUserFromDB = mockGetUserFromDB
 	dbAddFeed = mockAddFeed
-	servicesCreateFromUrl = mockCreateFromUrl
+	servicesCreateFromURL = mockCreateFromURL
 
 	defer func() {
-		// Restore original functions after the test
-		dbGetUserFromDB = originalGetUserFromDB
 		dbAddFeed = originalAddFeed
-		servicesCreateFromUrl = originalCreateFromUrl
+		servicesCreateFromURL = originalCreateFromURL
 	}()
 
-	testURL := "https://hdrezka.me/series/thriller/41647-igra-v-kalmara-2021-latest.html"
-	requestBody, _ := json.Marshal(map[string]string{"url": testURL})
+	const testURL = "https://hdrezka.me/series/thriller/41647-igra-v-kalmara-2021-latest.html"
+	request := httptest.NewRequest(http.MethodPost, "/add-lazy", bytes.NewBufferString(`{"url":"`+testURL+`"}`))
+	request = request.WithContext(auth.WithUser(request.Context(), models.User{ID: 1, Name: "testuser"}))
+	response := httptest.NewRecorder()
 
-	req, err := http.NewRequest("POST", "/add-lazy", bytes.NewBuffer(requestBody))
-	if err != nil {
-		t.Fatal(err)
+	HandleAddFeedLazy(response, request)
+
+	if response.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", response.Code, http.StatusOK)
 	}
-	req.SetBasicAuth("testuser", "testpassword")
-	req.Header.Set("Content-Type", "application/json")
-
-	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(HandleAddFeedLazy)
-
-	handler.ServeHTTP(rr, req)
-
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
+	var body feedMutationResponse
+	if err := json.NewDecoder(response.Body).Decode(&body); err != nil {
+		t.Fatalf("decode response: %v", err)
 	}
-
-	expected := `{"created":true,"item":{"id":1,"title":"Test Feed","type":"rss","url":"https://hdrezka.me/series/thriller/41647-igra-v-kalmara-2021-latest.html","userid":0}}`
-	// Unmarshal and then marshal again to handle potential differences in whitespace/order
-	var actual map[string]interface{}
-	if err := json.Unmarshal(rr.Body.Bytes(), &actual); err != nil {
-		t.Fatalf("Failed to unmarshal actual response: %v", err)
+	if !body.Created || body.Item.ID != 1 || body.Item.UserID != 1 || body.Item.URL != testURL {
+		t.Fatalf("response = %#v, want the created feed", body)
 	}
-	actualJSON, _ := json.Marshal(actual)
+}
 
-	var expectedMap map[string]interface{}
-	if err := json.Unmarshal([]byte(expected), &expectedMap); err != nil {
-		t.Fatalf("Failed to unmarshal expected response: %v", err)
+func TestHandleAddFeedLazyReturnsServerErrorWhenInsertFails(t *testing.T) {
+	originalAddFeed := dbAddFeed
+	originalCreateFromURL := servicesCreateFromURL
+	t.Cleanup(func() {
+		dbAddFeed = originalAddFeed
+		servicesCreateFromURL = originalCreateFromURL
+	})
+
+	dbAddFeed = func(models.Feed, int) (models.Feed, error) {
+		return models.Feed{}, errors.New("database unavailable")
 	}
-	expectedJSON, _ := json.Marshal(expectedMap)
+	servicesCreateFromURL = mockCreateFromURL
 
-	if string(actualJSON) != string(expectedJSON) {
-		t.Errorf("handler returned unexpected body: got %v want %v",
-			rr.Body.String(), expected)
+	request := httptest.NewRequest(http.MethodPost, "/add-lazy", bytes.NewBufferString(`{"url":"https://example.com"}`))
+	request = request.WithContext(auth.WithUser(request.Context(), models.User{ID: 1, Name: "testuser"}))
+	response := httptest.NewRecorder()
+
+	HandleAddFeedLazy(response, request)
+
+	if response.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want %d", response.Code, http.StatusInternalServerError)
 	}
 }

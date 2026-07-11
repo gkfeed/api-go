@@ -1,45 +1,47 @@
 package handlers
 
 import (
-	"encoding/json"
+	"net/http"
+
 	"gkfeed/api/internal/db"
 	"gkfeed/api/internal/models"
 	"gkfeed/api/internal/services"
-	"net/http"
 )
 
 var (
-	dbGetUserFromDB       = db.GetUserFromDB
 	dbAddFeed             = db.AddFeed
-	servicesCreateFromUrl = (&services.FeedFactory{}).CreateFromUrl
+	servicesCreateFromURL = services.CreateFeedFromURL
 )
 
+type feedMutationResponse struct {
+	Created bool        `json:"created"`
+	Item    models.Feed `json:"item"`
+}
+
 func HandleAddFeedLazy(w http.ResponseWriter, r *http.Request) {
-	userName, ok := basicAuthUserName(w, r)
+	user, ok := authenticatedUser(w, r)
 	if !ok {
 		return
 	}
 
 	var input struct {
-		Url string `json:"url"`
+		URL string `json:"url"`
 	}
-	err := json.NewDecoder(r.Body).Decode(&input)
+	if !decodeJSON(w, r, &input) {
+		return
+	}
+
+	feedInput, err := servicesCreateFromURL(input.URL)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	feedInput, err := servicesCreateFromUrl(input.Url)
+	feed, err := dbAddFeed(feedInput, user.ID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		writeInternalServerError(w, err)
 		return
 	}
 
-	user := dbGetUserFromDB(userName)
-	feed := dbAddFeed(*feedInput, user.ID)
-
-	respondJSON(w, struct {
-		Created bool        `json:"created"`
-		Item    models.Feed `json:"item"`
-	}{true, feed})
+	writeJSON(w, feedMutationResponse{Created: true, Item: feed})
 }

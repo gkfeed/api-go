@@ -2,11 +2,13 @@ package handlers
 
 import (
 	"encoding/xml"
+	"net/http"
+	"time"
+
 	"gkfeed/api/internal/db"
 	"gkfeed/api/internal/models"
 	"gkfeed/api/internal/services/rss"
-	"net/http"
-	"time"
+	"gkfeed/api/pkg/auth"
 )
 
 // NOTE: deprecated
@@ -14,12 +16,13 @@ func HandleGetRSSFeed(w http.ResponseWriter, r *http.Request) {
 	username := r.URL.Query().Get("username")
 	password := r.URL.Query().Get("password")
 
-	user := db.GetUserFromDB(username)
-	if user.HashedPassword != password {
-		if _, err := w.Write([]byte("No authentication provided")); err != nil {
-			http.Error(w, "Failed to write response", http.StatusInternalServerError)
-			return
-		}
+	user, authenticated, err := auth.Authenticate(username, password)
+	if err != nil {
+		writeInternalServerError(w, err)
+		return
+	}
+	if !authenticated {
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
 
@@ -27,19 +30,22 @@ func HandleGetRSSFeed(w http.ResponseWriter, r *http.Request) {
 }
 
 func HandleRSSFeed(w http.ResponseWriter, r *http.Request) {
-	userName, ok := basicAuthUserName(w, r)
+	user, ok := authenticatedUser(w, r)
 	if !ok {
 		return
 	}
 
-	user := db.GetUserFromDB(userName)
 	responseWithRSSFeed(w, user)
 }
 
 func responseWithRSSFeed(w http.ResponseWriter, user models.User) {
-	items := db.GetUserItems(user.ID)
+	items, err := db.GetUserItems(user.ID)
+	if err != nil {
+		writeInternalServerError(w, err)
+		return
+	}
 
-	var rssItems []rss.Item
+	rssItems := make([]rss.Item, 0, len(items))
 	for _, item := range items {
 		rssItems = append(rssItems, rss.Item{
 			ID:          item.ID,
@@ -56,5 +62,4 @@ func responseWithRSSFeed(w http.ResponseWriter, user models.User) {
 		http.Error(w, "Failed to encode RSS feed", http.StatusInternalServerError)
 		return
 	}
-
 }

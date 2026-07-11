@@ -2,142 +2,111 @@ package db
 
 import (
 	"fmt"
+
 	"gkfeed/api/internal/models"
-	"log"
 )
 
-func GetAllFeeds() (feeds []models.Feed) {
-	return getFeeds("SELECT * FROM feed;")
+const feedColumns = "id, title, url, type, user_id"
+
+func GetUserFeeds(userID int) ([]models.Feed, error) {
+	return getFeeds("SELECT "+feedColumns+" FROM feed WHERE user_id = ?", userID)
 }
 
-func GetUserFeeds(userID int) (feeds []models.Feed) {
-	query := fmt.Sprintf("SELECT * FROM feed WHERE user_id = %d;", userID)
-	return getFeeds(query)
-}
-
-func getFeeds(query string) (feeds []models.Feed) {
-	// Open a connection to the SQLite database
-	db, err := getDB()
+func getFeeds(query string, args ...any) ([]models.Feed, error) {
+	database, err := getDB()
 	if err != nil {
-		log.Fatal(err)
+		return nil, fmt.Errorf("open database: %w", err)
 	}
-	defer db.Close()
+	defer database.Close()
 
-	// Execute a query
-	rows, err := db.Query(query)
+	rows, err := database.Query(query, args...)
 	if err != nil {
-		log.Fatal(err)
+		return nil, fmt.Errorf("query feeds: %w", err)
 	}
 	defer rows.Close()
 
-	// Iterate over the rows
+	var feeds []models.Feed
 	for rows.Next() {
-		var id int
-		var title string
-		var feedType string
-		var url string
-		var userID int
-		err = rows.Scan(&id, &title, &url, &feedType, &userID)
+		feed, err := scanFeed(rows)
 		if err != nil {
-			log.Fatal(err)
-		}
-
-		feed := models.Feed{
-			ID:     id,
-			Title:  title,
-			Type:   feedType,
-			Url:    url,
-			UserID: userID,
+			return nil, fmt.Errorf("scan feed: %w", err)
 		}
 		feeds = append(feeds, feed)
 	}
 
-	// Check for any errors during iteration
-	err = rows.Err()
-	if err != nil {
-		log.Fatal(err)
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate feeds: %w", err)
 	}
 
-	return
-
+	return feeds, nil
 }
 
-func AddFeed(feedInput models.Feed, userID int) models.Feed {
-	// Open a connection to the SQLite database
-	db, err := getDB()
+func AddFeed(feedInput models.Feed, userID int) (models.Feed, error) {
+	database, err := getDB()
 	if err != nil {
-		log.Fatal(err)
+		return models.Feed{}, fmt.Errorf("open database: %w", err)
 	}
-	defer db.Close()
+	defer database.Close()
 
-	stmtIns, err := db.Prepare("INSERT INTO feed (title, type, url, user_id) VALUES( ?, ?, ?, ? )")
+	result, err := database.Exec(
+		"INSERT INTO feed (title, type, url, user_id) VALUES (?, ?, ?, ?)",
+		feedInput.Title,
+		feedInput.Type,
+		feedInput.URL,
+		userID,
+	)
 	if err != nil {
-		panic(err.Error())
-	}
-	defer stmtIns.Close()
-
-	// Execute the prepared statement
-	result, err := stmtIns.Exec(feedInput.Title, feedInput.Type, feedInput.Url, userID)
-	if err != nil {
-		panic(err.Error())
+		return models.Feed{}, fmt.Errorf("insert feed: %w", err)
 	}
 
-	feedID, _ := result.LastInsertId()
+	feedID, err := result.LastInsertId()
+	if err != nil {
+		return models.Feed{}, fmt.Errorf("get inserted feed ID: %w", err)
+	}
+
 	return models.Feed{
 		ID:     int(feedID),
 		Title:  feedInput.Title,
 		Type:   feedInput.Type,
-		Url:    feedInput.Url,
+		URL:    feedInput.URL,
 		UserID: userID,
-	}
+	}, nil
 }
 
-func DeleteFeedByID(id int) {
-	// Open a connection to the SQLite database
-	db, err := getDB()
+func DeleteFeedByID(id int) error {
+	database, err := getDB()
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("open database: %w", err)
 	}
-	defer db.Close()
+	defer database.Close()
 
-	_, err = db.Exec("DELETE FROM feed WHERE id = ?", id)
+	_, err = database.Exec("DELETE FROM feed WHERE id = ?", id)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("delete feed %d: %w", id, err)
 	}
+	return nil
 }
 
-func GetFeedByID(id int) models.Feed {
-	// Open a connection to the SQLite database
-	db, err := getDB()
+func GetFeedByID(id int) (models.Feed, error) {
+	database, err := getDB()
 	if err != nil {
-		log.Fatal(err)
+		return models.Feed{}, fmt.Errorf("open database: %w", err)
 	}
-	defer db.Close()
+	defer database.Close()
 
-	rows, err := db.Query("SELECT * FROM feed WHERE id = ?", id)
+	feed, err := scanFeed(database.QueryRow("SELECT "+feedColumns+" FROM feed WHERE id = ?", id))
 	if err != nil {
-		log.Fatal(err)
+		return models.Feed{}, fmt.Errorf("get feed %d: %w", id, err)
 	}
-	defer rows.Close()
+	return feed, nil
+}
 
-	if !rows.Next() {
-		fmt.Println("No feed with this id: ")
-		fmt.Println(id)
-	}
-	var title string
-	var feedType string
-	var url string
-	var userID int
-	err = rows.Scan(&id, &title, &url, &feedType, &userID)
-	if err != nil {
-		log.Fatal(err)
-	}
+type rowScanner interface {
+	Scan(dest ...any) error
+}
 
-	return models.Feed{
-		ID:     id,
-		Title:  title,
-		Type:   feedType,
-		Url:    url,
-		UserID: userID,
-	}
+func scanFeed(row rowScanner) (models.Feed, error) {
+	var feed models.Feed
+	err := row.Scan(&feed.ID, &feed.Title, &feed.URL, &feed.Type, &feed.UserID)
+	return feed, err
 }

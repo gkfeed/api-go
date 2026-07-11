@@ -1,34 +1,39 @@
 package handlers
 
 import (
+	"net/http"
+
 	"gkfeed/api/internal/db"
 	"gkfeed/api/internal/models"
-	"net/http"
-	"strconv"
 )
 
 func HandleDeleteFeed(w http.ResponseWriter, r *http.Request) {
-	userName, ok := basicAuthUserName(w, r)
+	user, ok := authenticatedUser(w, r)
 	if !ok {
 		return
 	}
 
-	var id int
-	id, err := strconv.Atoi(r.URL.Query().Get("id"))
+	id, ok := queryID(w, r)
+	if !ok {
+		return
+	}
+
+	feed, err := db.GetFeedByID(id)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		writeLookupError(w, err)
 		return
 	}
-
-	user := db.GetUserFromDB(userName)
-	feed := db.GetFeedByID(id)
 	if feed.UserID != user.ID {
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 		return
 	}
-	db.DeleteFeedByID(id)
+	if err := db.DeleteFeedByID(id); err != nil {
+		writeInternalServerError(w, err)
+		return
+	}
 
-	respondJSON(w, struct {
+	writeJSON(w, struct {
 		Deleted bool        `json:"deleted"`
 		Item    models.Feed `json:"item"`
-	}{true, feed})
+	}{Deleted: true, Item: feed})
 }

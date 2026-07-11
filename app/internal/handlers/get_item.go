@@ -1,28 +1,31 @@
 package handlers
 
 import (
+	"net/http"
+
 	"gkfeed/api/internal/db"
 	"gkfeed/api/internal/models"
-	"net/http"
-	"strconv"
 )
 
 func HandleGetItemByID(w http.ResponseWriter, r *http.Request) {
-	var id int
-	id, err := strconv.Atoi(r.URL.Query().Get("id"))
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	id, ok := queryID(w, r)
+	if !ok {
 		return
 	}
 
-	item := db.GetItemByID(id)
-	feed := db.GetFeedByID(item.FeedID)
+	item, err := db.GetItemByID(id)
+	if err != nil {
+		writeLookupError(w, err)
+		return
+	}
+	feed, err := db.GetFeedByID(item.FeedID)
+	if err != nil {
+		writeLookupError(w, err)
+		return
+	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "GET,POST,OPTIONS,DELETE,PUT")
-	respondJSON(w, struct {
+	writeJSON(w, struct {
 		Item models.Item `json:"item"`
 		Feed models.Feed `json:"feed"`
-	}{item, feed})
+	}{Item: item, Feed: feed})
 }

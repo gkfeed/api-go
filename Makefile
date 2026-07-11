@@ -1,3 +1,7 @@
+.PHONY: check dev format install-lint lint merge-to-master test update vet
+
+APP_DIR := app
+
 update:
 	git fetch && git pull
 	docker compose stop && docker compose rm -f
@@ -5,19 +9,24 @@ update:
 	docker compose up -d
 
 test:
-	cd app && go test ./...
+	cd $(APP_DIR) && go test ./...
+
+vet:
+	cd $(APP_DIR) && go vet ./...
+
+check: test vet
 
 lint:
-	cd app && $(shell go env GOPATH)/bin/golangci-lint run ./...
+	cd $(APP_DIR) && golangci-lint run ./...
 
 format:
-	cd app && go fmt ./...
+	cd $(APP_DIR) && go fmt ./...
 
 install-lint:
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 
 dev:
-	cd app && go run ./cmd/api/main.go
+	cd $(APP_DIR) && go run ./cmd/api
 
 merge-to-master:
 	git checkout master

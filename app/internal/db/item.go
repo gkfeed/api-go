@@ -2,136 +2,122 @@ package db
 
 import (
 	"fmt"
+
 	"gkfeed/api/internal/models"
-	"log"
-	"time"
 )
 
-func GetUserItems(userID int) (items []models.Item) {
-	query := fmt.Sprintf(
-		"SELECT item.* FROM item INNER JOIN feed ON item.feed_id = feed.id where feed.user_id = %d AND item.id NOT IN (SELECT item_id FROM deleted_items where user_id = %d);",
-		userID, userID,
-	)
+const itemColumns = "item.id, item.feed_id, item.title, item.text, item.date, item.link"
 
-	return getItems(query)
+func GetUserItems(userID int) ([]models.Item, error) {
+	return getItems(
+		`SELECT `+itemColumns+`
+		FROM item
+		JOIN feed ON item.feed_id = feed.id
+		WHERE feed.user_id = ?
+		  AND item.id NOT IN (
+			SELECT item_id FROM deleted_items WHERE user_id = ?
+		)`,
+		userID,
+		userID,
+	)
 }
 
-func GetUserItemsPage(userID int, cursor *int, limit int) (items []models.Item) {
-	query := fmt.Sprintf(
-		"SELECT item.* FROM item INNER JOIN feed ON item.feed_id = feed.id WHERE feed.user_id = %d AND item.id NOT IN (SELECT item_id FROM deleted_items WHERE user_id = %d)",
-		userID, userID,
-	)
+func GetUserItemsPage(userID int, cursor *int, limit int) ([]models.Item, error) {
+	query := `SELECT ` + itemColumns + `
+		FROM item
+		JOIN feed ON item.feed_id = feed.id
+		WHERE feed.user_id = ?
+		  AND item.id NOT IN (
+			SELECT item_id FROM deleted_items WHERE user_id = ?
+		  )`
+	args := []any{userID, userID}
 
 	if cursor != nil {
-		query += fmt.Sprintf(" AND item.id < %d", *cursor)
+		query += " AND item.id < ?"
+		args = append(args, *cursor)
 	}
 
-	query += fmt.Sprintf(" ORDER BY item.id DESC LIMIT %d;", limit)
-
-	return getItems(query)
+	query += " ORDER BY item.id DESC LIMIT ?"
+	args = append(args, limit)
+	return getItems(query, args...)
 }
 
-func GetUserDeletedItemsIDs(userID int) []int {
-	db, err := getDB()
+func InsertItemsIntoDeletedItems(userID int, itemIDs []int) error {
+	database, err := getDB()
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("open database: %w", err)
 	}
-	defer db.Close()
-	var itemsIDs []int
+	defer database.Close()
 
-	query := fmt.Sprintf("SELECT item_id FROM deleted_items WHERE user_id = %d;", userID)
-	rows, err := db.Query(query)
+	transaction, err := database.Begin()
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("begin deleted-items transaction: %w", err)
 	}
-	defer rows.Close()
+	defer transaction.Rollback()
 
-	for rows.Next() {
-		var id int
-
-		err = rows.Scan(&id)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		itemsIDs = append(itemsIDs, id)
-	}
-
-	return itemsIDs
-}
-
-func InsertItemsIntoDeletedItems(userID int, itemIDs []int) {
-	db, err := getDB()
+	statement, err := transaction.Prepare("INSERT INTO deleted_items (user_id, item_id) VALUES (?, ?)")
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("prepare deleted-item insert: %w", err)
 	}
-	defer db.Close()
-
-	stmtIns, err := db.Prepare("INSERT INTO deleted_items (user_id, item_id) VALUES( ?, ? )")
-	if err != nil {
-		panic(err.Error())
-	}
-	defer stmtIns.Close()
+	defer statement.Close()
 
 	for _, id := range itemIDs {
-		_, err := stmtIns.Exec(userID, id)
-		if err != nil {
-			panic(err.Error())
+		if _, err := statement.Exec(userID, id); err != nil {
+			return fmt.Errorf("insert deleted item %d: %w", id, err)
 		}
 	}
-}
 
-func GetItemByID(id int) (item models.Item) {
-	query := fmt.Sprintf("SELECT * FROM item WHERE id = %d;", id)
-
-	return getItems(query)[0]
-}
-
-func getItems(query string) (items []models.Item) {
-	// Open a connection to the SQLite database
-	db, err := getDB()
-	if err != nil {
-		log.Fatal(err)
+	if err := transaction.Commit(); err != nil {
+		return fmt.Errorf("commit deleted items: %w", err)
 	}
-	defer db.Close()
+	return nil
+}
 
-	// Execute a query
-	rows, err := db.Query(query)
+func GetItemByID(id int) (models.Item, error) {
+	database, err := getDB()
 	if err != nil {
-		log.Fatal(err)
+		return models.Item{}, fmt.Errorf("open database: %w", err)
+	}
+	defer database.Close()
+
+	item, err := scanItem(database.QueryRow("SELECT "+itemColumns+" FROM item WHERE item.id = ?", id))
+	if err != nil {
+		return models.Item{}, fmt.Errorf("get item %d: %w", id, err)
+	}
+	return item, nil
+}
+
+func getItems(query string, args ...any) ([]models.Item, error) {
+	database, err := getDB()
+	if err != nil {
+		return nil, fmt.Errorf("open database: %w", err)
+	}
+	defer database.Close()
+
+	rows, err := database.Query(query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("query items: %w", err)
 	}
 	defer rows.Close()
 
-	// Iterate over the rows
+	var items []models.Item
 	for rows.Next() {
-		var id int
-		var feedID int
-		var title string
-		var text string
-		var date time.Time
-		var link string
-
-		err = rows.Scan(&id, &feedID, &title, &text, &date, &link)
+		item, err := scanItem(rows)
 		if err != nil {
-			log.Fatal(err)
-		}
-
-		item := models.Item{
-			ID:     id,
-			FeedID: feedID,
-			Title:  title,
-			Text:   text,
-			Date:   date,
-			Link:   link,
+			return nil, fmt.Errorf("scan item: %w", err)
 		}
 		items = append(items, item)
 	}
 
-	// Check for any errors during iteration
-	err = rows.Err()
-	if err != nil {
-		log.Fatal(err)
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate items: %w", err)
 	}
 
-	return
+	return items, nil
+}
+
+func scanItem(row rowScanner) (models.Item, error) {
+	var item models.Item
+	err := row.Scan(&item.ID, &item.FeedID, &item.Title, &item.Text, &item.Date, &item.Link)
+	return item, err
 }
