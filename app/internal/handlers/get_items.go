@@ -21,26 +21,9 @@ func HandleGetItems(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	limit := defaultItemsLimit
-	if limitValue := r.URL.Query().Get("limit"); limitValue != "" {
-		parsedLimit, err := strconv.Atoi(limitValue)
-		if err != nil || parsedLimit <= 0 {
-			http.Error(w, "Invalid limit", http.StatusBadRequest)
-			return
-		}
-
-		limit = parsedLimit
-	}
-
-	var cursor *int
-	if cursorValue := r.URL.Query().Get("cursor"); cursorValue != "" {
-		parsedCursor, err := strconv.Atoi(cursorValue)
-		if err != nil || parsedCursor < 0 {
-			http.Error(w, "Invalid cursor", http.StatusBadRequest)
-			return
-		}
-
-		cursor = &parsedCursor
+	limit, cursor, ok := itemsPageParameters(w, r)
+	if !ok {
+		return
 	}
 
 	items, err := db.GetUserItemsPage(user.ID, cursor, limit+1)
@@ -49,12 +32,46 @@ func HandleGetItems(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var nextCursor *int
-	if len(items) > limit {
-		nextCursorValue := items[limit-1].ID
-		nextCursor = &nextCursorValue
-		items = items[:limit]
+	writeJSON(w, itemsPage(items, limit))
+}
+
+func itemsPageParameters(w http.ResponseWriter, r *http.Request) (int, *int, bool) {
+	limit, ok := positiveQueryInt(w, r, "limit", defaultItemsLimit, false)
+	if !ok {
+		return 0, nil, false
 	}
 
-	writeJSON(w, getItemsResponse{Items: items, NextCursor: nextCursor})
+	cursor, ok := positiveQueryInt(w, r, "cursor", 0, true)
+	if !ok {
+		return 0, nil, false
+	}
+	if r.URL.Query().Get("cursor") == "" {
+		return limit, nil, true
+	}
+
+	return limit, &cursor, true
+}
+
+func positiveQueryInt(w http.ResponseWriter, r *http.Request, name string, fallback int, allowZero bool) (int, bool) {
+	value := r.URL.Query().Get(name)
+	if value == "" {
+		return fallback, true
+	}
+
+	parsed, err := strconv.Atoi(value)
+	if err != nil || parsed < 0 || (!allowZero && parsed == 0) {
+		http.Error(w, "Invalid "+name, http.StatusBadRequest)
+		return 0, false
+	}
+
+	return parsed, true
+}
+
+func itemsPage(items []models.Item, limit int) getItemsResponse {
+	if len(items) <= limit {
+		return getItemsResponse{Items: items}
+	}
+
+	nextCursor := items[limit-1].ID
+	return getItemsResponse{Items: items[:limit], NextCursor: &nextCursor}
 }
