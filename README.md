@@ -52,7 +52,7 @@ Docker Compose mounts `~/.local/share/gkfeed/data` at `/data` and configures the
 | `GET` | `/api/v1/feed` | Basic | Return the user's RSS feed |
 | `POST` | `/api/v1/add` | Basic | Add a feed |
 | `POST` | `/api/v1/add_lazy` | Basic | Add a feed inferred from its URL |
-| `DELETE` or `GET` | `/api/v1/delete?id=<id>` | Basic | Delete a feed (`GET` is retained for compatibility) |
+| `DELETE` | `/api/v1/delete?id=<id>` | Basic | Delete a feed |
 | `POST` | `/api/v1/add_deleted_items` | Basic | Hide items for the user |
 | `GET` | `/api/v1/get_items` | Basic | Return cursor-paginated items |
 | `GET` | `/api/v1/item?id=<id>` | None | Return an item and its feed |
