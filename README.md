@@ -56,5 +56,3 @@ Docker Compose mounts `~/.local/share/gkfeed/data` at `/data` and configures the
 | `POST` | `/api/v1/add_deleted_items` | Basic | Hide items for the user |
 | `GET` | `/api/v1/get_items` | Basic | Return cursor-paginated items |
 | `GET` | `/api/v1/item?id=<id>` | None | Return an item and its feed |
-
-`GET /api/v1/get_feed` is a deprecated compatibility endpoint that accepts credentials in query parameters. New clients should use `/api/v1/feed` with Basic authentication.

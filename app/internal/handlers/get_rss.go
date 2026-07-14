@@ -8,26 +8,7 @@ import (
 	"gkfeed/api/internal/db"
 	"gkfeed/api/internal/models"
 	"gkfeed/api/internal/services/rss"
-	"gkfeed/api/pkg/auth"
 )
-
-// NOTE: deprecated
-func HandleGetRSSFeed(w http.ResponseWriter, r *http.Request) {
-	username := r.URL.Query().Get("username")
-	password := r.URL.Query().Get("password")
-
-	user, authenticated, err := auth.Authenticate(username, password)
-	if err != nil {
-		writeInternalServerError(w, err)
-		return
-	}
-	if !authenticated {
-		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-		return
-	}
-
-	responseWithRSSFeed(w, user)
-}
 
 func HandleRSSFeed(w http.ResponseWriter, r *http.Request) {
 	user, ok := authenticatedUser(w, r)

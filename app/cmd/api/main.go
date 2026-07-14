@@ -32,7 +32,6 @@ func newHandler(configuration config.Config) http.Handler {
 
 	api.HandleFunc("/list", auth.BasicAuth(handlers.HandleListOfFeeds)).Methods(http.MethodGet)
 	api.HandleFunc("/feed", auth.BasicAuth(handlers.HandleRSSFeed)).Methods(http.MethodGet)
-	api.HandleFunc("/get_feed", handlers.HandleGetRSSFeed).Methods(http.MethodGet)
 	api.HandleFunc("/add", auth.BasicAuth(handlers.HandleAddFeed)).Methods(http.MethodPost)
 	api.HandleFunc("/delete", auth.BasicAuth(handlers.HandleDeleteFeed)).Methods(http.MethodGet, http.MethodDelete)
 	api.HandleFunc("/add_lazy", auth.BasicAuth(handlers.HandleAddFeedLazy)).Methods(http.MethodPost)
