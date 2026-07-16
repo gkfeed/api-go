@@ -2,31 +2,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
-
-class StrictModel(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-
-class User(BaseModel):
-    id: int
-    name: str
-    hashed_password: str = Field(exclude=True)
-
-
-class FeedInput(StrictModel):
-    id: int = 0
-    title: str = ""
-    type: str = ""
-    url: str = ""
-    userid: int = 0
-
-
-class Feed(BaseModel):
-    id: int
-    title: str
-    type: str
-    url: str
-    userid: int
+from .base import StrictModel
+from .feed import Feed
 
 
 class Item(BaseModel):
@@ -42,22 +19,8 @@ class Item(BaseModel):
         return value.isoformat().replace("+00:00", "Z")
 
 
-class LazyFeedInput(StrictModel):
-    url: str = ""
-
-
 class DeletedItemsInput(StrictModel):
     item_ids: list[int] = Field(default_factory=list, alias="itemIds")
-
-
-class FeedMutation(BaseModel):
-    created: bool
-    item: Feed
-
-
-class FeedDeletion(BaseModel):
-    deleted: bool
-    item: Feed
 
 
 class ItemsPage(BaseModel):
