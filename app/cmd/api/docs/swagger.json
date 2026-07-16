@@ -1,0 +1,976 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "JWT token: \"Bearer \u003ctoken\u003e\"",
+        "title": "GKFeed API",
+        "contact": {
+            "name": "GKFeed",
+            "url": "https://github.com/gkfeed/api-go"
+        },
+        "version": "1.0"
+    },
+    "paths": {
+        "/api/v1/add": {
+            "post": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    },
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Adds a new RSS/YouTube/TikTok feed for the authenticated user.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "feeds"
+                ],
+                "summary": "Add feed",
+                "parameters": [
+                    {
+                        "description": "Feed to add (title, type, url)",
+                        "name": "feed",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.Feed"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/gkfeed_api_internal_handlers.feedMutationResponse"
+                        }
+                    },
+                    "400": {
+                        "description": ""
+                    },
+                    "401": {
+                        "description": ""
+                    },
+                    "500": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/add_deleted_items": {
+            "post": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    },
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Marks the specified items as deleted for the authenticated user.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "items"
+                ],
+                "summary": "Mark items as deleted",
+                "parameters": [
+                    {
+                        "description": "Item IDs to mark as deleted",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "type": "object"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "itemIds": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "integer"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    },
+                    "400": {
+                        "description": ""
+                    },
+                    "401": {
+                        "description": ""
+                    },
+                    "500": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/add_lazy": {
+            "post": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    },
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Creates a feed by parsing the URL and detecting the source type (YouTube, TikTok, Rezka, etc.).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "feeds"
+                ],
+                "summary": "Add feed by URL",
+                "parameters": [
+                    {
+                        "description": "URL to create feed from",
+                        "name": "feed",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "type": "object"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "url": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/gkfeed_api_internal_handlers.feedMutationResponse"
+                        }
+                    },
+                    "400": {
+                        "description": ""
+                    },
+                    "401": {
+                        "description": ""
+                    },
+                    "500": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/delete": {
+            "delete": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    },
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Deletes a feed by ID. Only the feed owner can delete it.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "feeds"
+                ],
+                "summary": "Delete feed",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Feed ID",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "type": "object"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "deleted": {
+                                            "type": "boolean"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": ""
+                    },
+                    "401": {
+                        "description": ""
+                    },
+                    "404": {
+                        "description": ""
+                    },
+                    "500": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/feed": {
+            "get": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    },
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns all user items as an RSS 2.0 XML feed.",
+                "produces": [
+                    "application/rss+xml"
+                ],
+                "tags": [
+                    "feeds"
+                ],
+                "summary": "Get RSS feed",
+                "responses": {
+                    "200": {
+                        "description": ""
+                    },
+                    "401": {
+                        "description": ""
+                    },
+                    "500": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/get_items": {
+            "get": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    },
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns paginated items for the authenticated user. Supports cursor-based pagination.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "items"
+                ],
+                "summary": "Get items",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Items per page (default 100)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Pagination cursor (item ID)",
+                        "name": "cursor",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.getItemsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": ""
+                    },
+                    "401": {
+                        "description": ""
+                    },
+                    "500": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/item": {
+            "get": {
+                "description": "Returns a single item with its parent feed. No authentication required.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "items"
+                ],
+                "summary": "Get item by ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Item ID",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "type": "object"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "feed": {
+                                            "type": "object"
+                                        },
+                                        "item": {
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": ""
+                    },
+                    "404": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/list": {
+            "get": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    },
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns all feeds for the authenticated user.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "feeds"
+                ],
+                "summary": "List feeds",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "object"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": ""
+                    },
+                    "500": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/auth/credentials": {
+            "get": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    },
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns all registered passkeys for the authenticated user.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "List passkeys",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "allOf": [
+                                    {
+                                        "type": "object"
+                                    },
+                                    {
+                                        "type": "object",
+                                        "properties": {
+                                            "created_at": {
+                                                "type": "string"
+                                            },
+                                            "id": {
+                                                "type": "string"
+                                            },
+                                            "last_used_at": {
+                                                "type": "string"
+                                            },
+                                            "name": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": ""
+                    },
+                    "500": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/auth/credentials/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    },
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Removes a specific passkey credential for the authenticated user.",
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Delete passkey",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Credential ID (base64url)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": ""
+                    },
+                    "400": {
+                        "description": ""
+                    },
+                    "401": {
+                        "description": ""
+                    },
+                    "404": {
+                        "description": ""
+                    },
+                    "500": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/auth/login/begin": {
+            "post": {
+                "description": "Starts discoverable WebAuthn login, returns assertion options for the browser.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Begin passkey login",
+                "responses": {
+                    "200": {
+                        "description": ""
+                    },
+                    "500": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/auth/login/finish": {
+            "post": {
+                "description": "Completes WebAuthn authentication, returns a JWT access/refresh token pair.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Finish passkey login",
+                "parameters": [
+                    {
+                        "description": "WebAuthn assertion response",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "type": "object"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "access_token": {
+                                            "type": "string"
+                                        },
+                                        "credential_id": {
+                                            "type": "string"
+                                        },
+                                        "refresh_token": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": ""
+                    },
+                    "500": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/auth/logout": {
+            "post": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    },
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Invalidates all refresh tokens for the authenticated user.",
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Logout",
+                "responses": {
+                    "204": {
+                        "description": ""
+                    },
+                    "401": {
+                        "description": ""
+                    },
+                    "500": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/auth/me": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns the authenticated user's ID and name. JWT only.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Current user",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "type": "object"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "id": {
+                                            "type": "integer"
+                                        },
+                                        "name": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/auth/refresh": {
+            "post": {
+                "description": "Exchanges a valid refresh token for a new access/refresh token pair. Old refresh token is invalidated.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Refresh access token",
+                "parameters": [
+                    {
+                        "description": "Refresh token",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.refreshRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "type": "object"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "access_token": {
+                                            "type": "string"
+                                        },
+                                        "refresh_token": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": ""
+                    },
+                    "401": {
+                        "description": ""
+                    },
+                    "500": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/auth/register/begin": {
+            "post": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    },
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Starts WebAuthn registration, returns creation options for the browser.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Begin passkey registration",
+                "parameters": [
+                    {
+                        "description": "Optional name for the passkey",
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers.registerBeginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    },
+                    "401": {
+                        "description": ""
+                    },
+                    "500": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/auth/register/finish": {
+            "post": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    },
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Completes WebAuthn registration with the attestation response from the browser.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Finish passkey registration",
+                "parameters": [
+                    {
+                        "description": "WebAuthn attestation response",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "type": "object"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "id": {
+                                            "type": "string"
+                                        },
+                                        "name": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": ""
+                    },
+                    "401": {
+                        "description": ""
+                    },
+                    "500": {
+                        "description": ""
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "gkfeed_api_internal_handlers.feedMutationResponse": {
+            "type": "object",
+            "properties": {
+                "created": {
+                    "type": "boolean"
+                },
+                "item": {
+                    "$ref": "#/definitions/models.Feed"
+                }
+            }
+        },
+        "gkfeed_api_internal_handlers.getItemsResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Item"
+                    }
+                },
+                "next_cursor": {
+                    "type": "integer"
+                }
+            }
+        },
+        "gkfeed_api_internal_handlers.refreshRequest": {
+            "type": "object",
+            "properties": {
+                "refresh_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "gkfeed_api_internal_handlers.registerBeginRequest": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handlers.feedMutationResponse": {
+            "type": "object",
+            "properties": {
+                "created": {
+                    "type": "boolean"
+                },
+                "item": {
+                    "$ref": "#/definitions/models.Feed"
+                }
+            }
+        },
+        "internal_handlers.getItemsResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Item"
+                    }
+                },
+                "next_cursor": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_handlers.refreshRequest": {
+            "type": "object",
+            "properties": {
+                "refresh_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handlers.registerBeginRequest": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.Feed": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                },
+                "userid": {
+                    "type": "integer"
+                }
+            }
+        },
+        "models.Item": {
+            "type": "object",
+            "properties": {
+                "date": {
+                    "type": "string"
+                },
+                "feed_id": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "link": {
+                    "type": "string"
+                },
+                "text": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "BasicAuth": {
+            "type": "basic"
+        },
+        "BearerAuth": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
+        }
+    }
+}

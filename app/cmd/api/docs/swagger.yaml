@@ -1,0 +1,589 @@
+definitions:
+  gkfeed_api_internal_handlers.feedMutationResponse:
+    properties:
+      created:
+        type: boolean
+      item:
+        $ref: '#/definitions/models.Feed'
+    type: object
+  gkfeed_api_internal_handlers.getItemsResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/models.Item'
+        type: array
+      next_cursor:
+        type: integer
+    type: object
+  gkfeed_api_internal_handlers.refreshRequest:
+    properties:
+      refresh_token:
+        type: string
+    type: object
+  gkfeed_api_internal_handlers.registerBeginRequest:
+    properties:
+      name:
+        type: string
+    type: object
+  internal_handlers.feedMutationResponse:
+    properties:
+      created:
+        type: boolean
+      item:
+        $ref: '#/definitions/models.Feed'
+    type: object
+  internal_handlers.getItemsResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/models.Item'
+        type: array
+      next_cursor:
+        type: integer
+    type: object
+  internal_handlers.refreshRequest:
+    properties:
+      refresh_token:
+        type: string
+    type: object
+  internal_handlers.registerBeginRequest:
+    properties:
+      name:
+        type: string
+    type: object
+  models.Feed:
+    properties:
+      id:
+        type: integer
+      title:
+        type: string
+      type:
+        type: string
+      url:
+        type: string
+      userid:
+        type: integer
+    type: object
+  models.Item:
+    properties:
+      date:
+        type: string
+      feed_id:
+        type: integer
+      id:
+        type: integer
+      link:
+        type: string
+      text:
+        type: string
+      title:
+        type: string
+    type: object
+info:
+  contact:
+    name: GKFeed
+    url: https://github.com/gkfeed/api-go
+  description: 'JWT token: "Bearer <token>"'
+  title: GKFeed API
+  version: "1.0"
+paths:
+  /api/v1/add:
+    post:
+      consumes:
+      - application/json
+      description: Adds a new RSS/YouTube/TikTok feed for the authenticated user.
+      parameters:
+      - description: Feed to add (title, type, url)
+        in: body
+        name: feed
+        required: true
+        schema:
+          $ref: '#/definitions/models.Feed'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/gkfeed_api_internal_handlers.feedMutationResponse'
+        "400":
+          description: ""
+        "401":
+          description: ""
+        "500":
+          description: ""
+      security:
+      - BasicAuth: []
+      - BearerAuth: []
+      summary: Add feed
+      tags:
+      - feeds
+  /api/v1/add_deleted_items:
+    post:
+      consumes:
+      - application/json
+      description: Marks the specified items as deleted for the authenticated user.
+      parameters:
+      - description: Item IDs to mark as deleted
+        in: body
+        name: body
+        required: true
+        schema:
+          allOf:
+          - type: object
+          - properties:
+              itemIds:
+                items:
+                  type: integer
+                type: array
+            type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+        "400":
+          description: ""
+        "401":
+          description: ""
+        "500":
+          description: ""
+      security:
+      - BasicAuth: []
+      - BearerAuth: []
+      summary: Mark items as deleted
+      tags:
+      - items
+  /api/v1/add_lazy:
+    post:
+      consumes:
+      - application/json
+      description: Creates a feed by parsing the URL and detecting the source type
+        (YouTube, TikTok, Rezka, etc.).
+      parameters:
+      - description: URL to create feed from
+        in: body
+        name: feed
+        required: true
+        schema:
+          allOf:
+          - type: object
+          - properties:
+              url:
+                type: string
+            type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/gkfeed_api_internal_handlers.feedMutationResponse'
+        "400":
+          description: ""
+        "401":
+          description: ""
+        "500":
+          description: ""
+      security:
+      - BasicAuth: []
+      - BearerAuth: []
+      summary: Add feed by URL
+      tags:
+      - feeds
+  /api/v1/delete:
+    delete:
+      description: Deletes a feed by ID. Only the feed owner can delete it.
+      parameters:
+      - description: Feed ID
+        in: query
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - type: object
+            - properties:
+                deleted:
+                  type: boolean
+              type: object
+        "400":
+          description: ""
+        "401":
+          description: ""
+        "404":
+          description: ""
+        "500":
+          description: ""
+      security:
+      - BasicAuth: []
+      - BearerAuth: []
+      summary: Delete feed
+      tags:
+      - feeds
+  /api/v1/feed:
+    get:
+      description: Returns all user items as an RSS 2.0 XML feed.
+      produces:
+      - application/rss+xml
+      responses:
+        "200":
+          description: ""
+        "401":
+          description: ""
+        "500":
+          description: ""
+      security:
+      - BasicAuth: []
+      - BearerAuth: []
+      summary: Get RSS feed
+      tags:
+      - feeds
+  /api/v1/get_items:
+    get:
+      description: Returns paginated items for the authenticated user. Supports cursor-based
+        pagination.
+      parameters:
+      - description: Items per page (default 100)
+        in: query
+        name: limit
+        type: integer
+      - description: Pagination cursor (item ID)
+        in: query
+        name: cursor
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_handlers.getItemsResponse'
+        "400":
+          description: ""
+        "401":
+          description: ""
+        "500":
+          description: ""
+      security:
+      - BasicAuth: []
+      - BearerAuth: []
+      summary: Get items
+      tags:
+      - items
+  /api/v1/item:
+    get:
+      description: Returns a single item with its parent feed. No authentication required.
+      parameters:
+      - description: Item ID
+        in: query
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - type: object
+            - properties:
+                feed:
+                  type: object
+                item:
+                  type: object
+              type: object
+        "400":
+          description: ""
+        "404":
+          description: ""
+      summary: Get item by ID
+      tags:
+      - items
+  /api/v1/list:
+    get:
+      description: Returns all feeds for the authenticated user.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: object
+            type: array
+        "401":
+          description: ""
+        "500":
+          description: ""
+      security:
+      - BasicAuth: []
+      - BearerAuth: []
+      summary: List feeds
+      tags:
+      - feeds
+  /auth/credentials:
+    get:
+      description: Returns all registered passkeys for the authenticated user.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              allOf:
+              - type: object
+              - properties:
+                  created_at:
+                    type: string
+                  id:
+                    type: string
+                  last_used_at:
+                    type: string
+                  name:
+                    type: string
+                type: object
+            type: array
+        "401":
+          description: ""
+        "500":
+          description: ""
+      security:
+      - BasicAuth: []
+      - BearerAuth: []
+      summary: List passkeys
+      tags:
+      - auth
+  /auth/credentials/{id}:
+    delete:
+      description: Removes a specific passkey credential for the authenticated user.
+      parameters:
+      - description: Credential ID (base64url)
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: ""
+        "400":
+          description: ""
+        "401":
+          description: ""
+        "404":
+          description: ""
+        "500":
+          description: ""
+      security:
+      - BasicAuth: []
+      - BearerAuth: []
+      summary: Delete passkey
+      tags:
+      - auth
+  /auth/login/begin:
+    post:
+      description: Starts discoverable WebAuthn login, returns assertion options for
+        the browser.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+        "500":
+          description: ""
+      summary: Begin passkey login
+      tags:
+      - auth
+  /auth/login/finish:
+    post:
+      consumes:
+      - application/json
+      description: Completes WebAuthn authentication, returns a JWT access/refresh
+        token pair.
+      parameters:
+      - description: WebAuthn assertion response
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - type: object
+            - properties:
+                access_token:
+                  type: string
+                credential_id:
+                  type: string
+                refresh_token:
+                  type: string
+              type: object
+        "400":
+          description: ""
+        "500":
+          description: ""
+      summary: Finish passkey login
+      tags:
+      - auth
+  /auth/logout:
+    post:
+      description: Invalidates all refresh tokens for the authenticated user.
+      responses:
+        "204":
+          description: ""
+        "401":
+          description: ""
+        "500":
+          description: ""
+      security:
+      - BasicAuth: []
+      - BearerAuth: []
+      summary: Logout
+      tags:
+      - auth
+  /auth/me:
+    get:
+      description: Returns the authenticated user's ID and name. JWT only.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - type: object
+            - properties:
+                id:
+                  type: integer
+                name:
+                  type: string
+              type: object
+        "401":
+          description: ""
+      security:
+      - BearerAuth: []
+      summary: Current user
+      tags:
+      - auth
+  /auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Exchanges a valid refresh token for a new access/refresh token
+        pair. Old refresh token is invalidated.
+      parameters:
+      - description: Refresh token
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handlers.refreshRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - type: object
+            - properties:
+                access_token:
+                  type: string
+                refresh_token:
+                  type: string
+              type: object
+        "400":
+          description: ""
+        "401":
+          description: ""
+        "500":
+          description: ""
+      summary: Refresh access token
+      tags:
+      - auth
+  /auth/register/begin:
+    post:
+      consumes:
+      - application/json
+      description: Starts WebAuthn registration, returns creation options for the
+        browser.
+      parameters:
+      - description: Optional name for the passkey
+        in: body
+        name: body
+        schema:
+          $ref: '#/definitions/internal_handlers.registerBeginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+        "401":
+          description: ""
+        "500":
+          description: ""
+      security:
+      - BasicAuth: []
+      - BearerAuth: []
+      summary: Begin passkey registration
+      tags:
+      - auth
+  /auth/register/finish:
+    post:
+      consumes:
+      - application/json
+      description: Completes WebAuthn registration with the attestation response from
+        the browser.
+      parameters:
+      - description: WebAuthn attestation response
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - type: object
+            - properties:
+                id:
+                  type: string
+                name:
+                  type: string
+              type: object
+        "400":
+          description: ""
+        "401":
+          description: ""
+        "500":
+          description: ""
+      security:
+      - BasicAuth: []
+      - BearerAuth: []
+      summary: Finish passkey registration
+      tags:
+      - auth
+securityDefinitions:
+  BasicAuth:
+    type: basic
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

@@ -15,6 +15,19 @@ type getItemsResponse struct {
 	NextCursor *int          `json:"next_cursor,omitempty"`
 }
 
+// @Summary      Get items
+// @Description  Returns paginated items for the authenticated user. Supports cursor-based pagination.
+// @Tags         items
+// @Produce      json
+// @Param        limit   query     int  false  "Items per page (default 100)"
+// @Param        cursor  query     int  false  "Pagination cursor (item ID)"
+// @Security     BasicAuth
+// @Security     BearerAuth
+// @Success      200     {object}  getItemsResponse
+// @Failure      400
+// @Failure      401
+// @Failure      500
+// @Router       /api/v1/get_items [get]
 func HandleGetItems(w http.ResponseWriter, r *http.Request) {
 	user, ok := authenticatedUser(w, r)
 	if !ok {

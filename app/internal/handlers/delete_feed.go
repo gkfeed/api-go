@@ -7,6 +7,19 @@ import (
 	"gkfeed/api/internal/models"
 )
 
+// @Summary      Delete feed
+// @Description  Deletes a feed by ID. Only the feed owner can delete it.
+// @Tags         feeds
+// @Produce      json
+// @Param        id   query     int  true  "Feed ID"
+// @Security     BasicAuth
+// @Security     BearerAuth
+// @Success      200  {object}  object{deleted=bool}
+// @Failure      400
+// @Failure      401
+// @Failure      404
+// @Failure      500
+// @Router       /api/v1/delete [delete]
 func HandleDeleteFeed(w http.ResponseWriter, r *http.Request) {
 	user, ok := authenticatedUser(w, r)
 	if !ok {

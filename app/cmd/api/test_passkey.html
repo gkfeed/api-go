@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Passkey Test</title>
+<style>
+body { font-family: monospace; max-width: 600px; margin: 40px auto; }
+button { padding: 8px 16px; margin: 4px; cursor: pointer; }
+pre { background: #f4f4f4; padding: 10px; font-size: 12px; overflow-x: auto; }
+input { padding: 6px; width: 200px; margin: 4px; }
+.hidden { display: none; }
+</style>
+</head>
+<body>
+<h1>Passkey Test</h1>
+
+<div id="step-login">
+  <h3>Step 1: Login via Basic Auth (to register passkey)</h3>
+  <input id="username" placeholder="username" value="test">
+  <input id="password" placeholder="password" type="password" value="test123">
+  <button onclick="basicLogin()">Login</button>
+  <pre id="login-result"></pre>
+</div>
+
+<div id="step-register" class="hidden">
+  <h3>Step 2: Register Passkey</h3>
+  <input id="keyname" placeholder="key name (optional)" value="My Key">
+  <button onclick="registerPasskey()">Register Passkey</button>
+  <pre id="register-result"></pre>
+</div>
+
+<div id="step-login-passkey">
+  <h3>Step 3: Login with Passkey</h3>
+  <button onclick="loginPasskey()">Login with Passkey</button>
+  <pre id="login-pk-result"></pre>
+</div>
+
+<div id="step-result" class="hidden">
+  <h3>Result: JWT Tokens</h3>
+  <pre id="tokens"></pre>
+</div>
+
+<script>
+const BASE = 'http://localhost:8086';
+let basicCreds = null;
+
+function base64urlToBuffer(b64) {
+  b64 = b64.replace(/-/g, '+').replace(/_/g, '/');
+  while (b64.length % 4) b64 += '=';
+  const raw = atob(b64);
+  const buf = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) buf[i] = raw.charCodeAt(i);
+  return buf.buffer;
+}
+
+function bufferToBase64url(buf) {
+  const bytes = new Uint8Array(buf);
+  let s = '';
+  for (const b of bytes) s += String.fromCharCode(b);
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+async function basicLogin() {
+  const u = document.getElementById('username').value;
+  const p = document.getElementById('password').value;
+  basicCreds = btoa(u + ':' + p);
+  const r = await fetch(BASE + '/api/v1/list', {
+    headers: { 'Authorization': 'Basic ' + basicCreds }
+  });
+  const el = document.getElementById('login-result');
+  if (r.ok) {
+    el.textContent = 'OK, authenticated as ' + u;
+    document.getElementById('step-register').classList.remove('hidden');
+  } else {
+    el.textContent = 'FAILED: ' + r.status + ' ' + await r.text();
+  }
+}
+
+async function registerPasskey() {
+  const name = document.getElementById('keyname').value || '';
+  const el = document.getElementById('register-result');
+
+  // Begin registration
+  const beginResp = await fetch(BASE + '/auth/register/begin', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Basic ' + basicCreds,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ name })
+  });
+  if (!beginResp.ok) { el.textContent = 'begin failed: ' + await beginResp.text(); return; }
+  const creationOptions = await beginResp.json();
+
+  // Convert challenge
+  const publicKey = {
+    challenge: base64urlToBuffer(creationOptions.publicKey.challenge),
+    rp: creationOptions.publicKey.rp,
+    user: {
+      id: base64urlToBuffer(creationOptions.publicKey.user.id),
+      name: creationOptions.publicKey.user.name,
+      displayName: creationOptions.publicKey.user.displayName,
+    },
+    pubKeyCredParams: creationOptions.publicKey.pubKeyCredParams,
+    authenticatorSelection: creationOptions.publicKey.authenticatorSelection,
+    attestation: creationOptions.publicKey.attestation || 'none',
+    timeout: creationOptions.publicKey.timeout || 60000,
+  };
+
+  // Create credential in browser
+  let credential;
+  try {
+    credential = await navigator.credentials.create({ publicKey });
+  } catch (e) {
+    el.textContent = 'Browser create failed: ' + e.message;
+    return;
+  }
+
+  // Finish registration
+  const finishResp = await fetch(BASE + '/auth/register/finish', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Basic ' + basicCreds,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      id: credential.id,
+      rawId: bufferToBase64url(credential.rawId),
+      type: 'public-key',
+      response: {
+        clientDataJSON: bufferToBase64url(credential.response.clientDataJSON),
+        attestationObject: bufferToBase64url(credential.response.attestationObject),
+      }
+    })
+  });
+
+  if (finishResp.ok) {
+    el.textContent = 'Passkey registered! ' + JSON.stringify(await finishResp.json(), null, 2);
+    document.getElementById('step-login-passkey').classList.remove('hidden');
+  } else {
+    el.textContent = 'finish failed: ' + await finishResp.text();
+  }
+}
+
+async function loginPasskey() {
+  const el = document.getElementById('login-pk-result');
+
+  // Begin login
+  const beginResp = await fetch(BASE + '/auth/login/begin', { method: 'POST' });
+  if (!beginResp.ok) { el.textContent = 'begin failed: ' + await beginResp.text(); return; }
+  const assertionOptions = await beginResp.json();
+
+  // Convert challenge
+  const publicKey = {
+    challenge: base64urlToBuffer(assertionOptions.publicKey.challenge),
+    rpId: assertionOptions.publicKey.rpId,
+    userVerification: assertionOptions.publicKey.userVerification || 'preferred',
+    timeout: assertionOptions.publicKey.timeout || 60000,
+  };
+
+  // Get credential from browser
+  let credential;
+  try {
+    credential = await navigator.credentials.get({ publicKey });
+  } catch (e) {
+    el.textContent = 'Browser get failed: ' + e.message;
+    return;
+  }
+
+  // Finish login
+  const finishResp = await fetch(BASE + '/auth/login/finish', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      id: credential.id,
+      rawId: bufferToBase64url(credential.rawId),
+      type: 'public-key',
+      response: {
+        clientDataJSON: bufferToBase64url(credential.response.clientDataJSON),
+        authenticatorData: bufferToBase64url(credential.response.authenticatorData),
+        signature: bufferToBase64url(credential.response.signature),
+        userHandle: credential.response.userHandle ? bufferToBase64url(credential.response.userHandle) : null,
+      }
+    })
+  });
+
+  if (finishResp.ok) {
+    const tokens = await finishResp.json();
+    document.getElementById('tokens').textContent = JSON.stringify(tokens, null, 2);
+    document.getElementById('step-result').classList.remove('hidden');
+    el.textContent = 'Login OK!';
+  } else {
+    el.textContent = 'finish failed: ' + await finishResp.text();
+  }
+}
+</script>
+</body>
+</html>
