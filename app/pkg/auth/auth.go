@@ -44,6 +44,7 @@ func Authenticate(cfg config.Config) func(http.HandlerFunc) http.HandlerFunc {
 	return func(handler http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			if user, ok := tryJWT(r, cfg); ok {
+				log.Printf("auth: authenticated via JWT user=%s id=%d", user.Name, user.ID)
 				handler(w, r.WithContext(WithUser(r.Context(), user)))
 				return
 			}
@@ -52,16 +53,23 @@ func Authenticate(cfg config.Config) func(http.HandlerFunc) http.HandlerFunc {
 			if ok {
 				user, authenticated, err := authenticateWithDB(username, password)
 				if err != nil {
-					log.Printf("authentication failed: %v", err)
+					log.Printf("auth: basic auth error for user=%q: %v", username, err)
 					http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 					return
 				}
 				if authenticated {
+					log.Printf("auth: authenticated via BasicAuth user=%s id=%d", user.Name, user.ID)
 					handler(w, r.WithContext(WithUser(r.Context(), user)))
 					return
 				}
+				log.Printf("auth: basic auth failed (wrong password) for user=%q", username)
 			}
 
+			if authHeader := r.Header.Get("Authorization"); authHeader != "" {
+				log.Printf("auth: rejecting request, Authorization header=%q, parsed basic=%v", authHeader[:min(len(authHeader), 30)], ok)
+			} else {
+				log.Printf("auth: rejecting request, no Authorization header")
+			}
 			w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
 			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		}

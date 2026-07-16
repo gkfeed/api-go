@@ -83,7 +83,7 @@ info:
   contact:
     name: GKFeed
     url: https://github.com/gkfeed/api-go
-  description: 'JWT token: "Bearer <token>"'
+  description: RSS feed aggregator with passkey authentication.
   title: GKFeed API
   version: "1.0"
 paths:
@@ -178,7 +178,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/gkfeed_api_internal_handlers.feedMutationResponse'
+            $ref: '#/definitions/internal_handlers.feedMutationResponse'
         "400":
           description: ""
         "401":

@@ -181,7 +181,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/gkfeed_api_internal_handlers.feedMutationResponse"
+                            "$ref": "#/definitions/internal_handlers.feedMutationResponse"
                         }
                     },
                     "400": {
@@ -991,7 +991,7 @@ var SwaggerInfo = &swag.Spec{
 	BasePath:         "",
 	Schemes:          []string{},
 	Title:            "GKFeed API",
-	Description:      "JWT token: \"Bearer <token>\"",
+	Description:      "RSS feed aggregator with passkey authentication.",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 }

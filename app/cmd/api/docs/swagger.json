@@ -1,7 +1,7 @@
 {
     "swagger": "2.0",
     "info": {
-        "description": "JWT token: \"Bearer \u003ctoken\u003e\"",
+        "description": "RSS feed aggregator with passkey authentication.",
         "title": "GKFeed API",
         "contact": {
             "name": "GKFeed",
@@ -172,7 +172,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/gkfeed_api_internal_handlers.feedMutationResponse"
+                            "$ref": "#/definitions/internal_handlers.feedMutationResponse"
                         }
                     },
                     "400": {

@@ -29,10 +29,10 @@ var testPasskeyHTML string
 // @contact.url    https://github.com/gkfeed/api-go
 
 // @securityDefinitions.basic  BasicAuth
+
 // @securityDefinitions.apikey BearerAuth
 // @in                         header
 // @name                       Authorization
-// @description                JWT token: "Bearer <token>"
 
 func main() {
 	configuration := config.Load()
