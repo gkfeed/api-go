@@ -1,6 +1,7 @@
 from sqlmodel import select
 
-from ..models import User
+from models import User
+
 from .session import SessionFactory
 from .tables import UserRecord
 

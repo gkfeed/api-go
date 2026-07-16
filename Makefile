@@ -22,7 +22,7 @@ format:
 	uv run ruff format .
 
 dev:
-	uv run uvicorn gkfeed.api:app --reload --host 0.0.0.0 --port 8086
+	uv run uvicorn api:app --reload --host 0.0.0.0 --port 8086
 
 merge-to-master:
 	git checkout master

@@ -2,7 +2,7 @@ from datetime import UTC
 from email.utils import format_datetime
 from xml.etree.ElementTree import Element, SubElement, tostring
 
-from ..models import Item
+from models import Item
 
 
 def generate_rss(items: list[Item]) -> bytes:

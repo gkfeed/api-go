@@ -1,6 +1,7 @@
 from sqlmodel import select
 
-from ..models import Feed, FeedInput
+from models import Feed, FeedInput
+
 from .session import SessionFactory
 from .tables import FeedRecord
 

@@ -2,7 +2,8 @@ from collections.abc import Sequence
 
 from sqlmodel import select
 
-from ..models import Item
+from models import Item
+
 from .session import SessionFactory
 from .tables import DeletedItemRecord, FeedRecord, ItemRecord
 

@@ -1,4 +1,4 @@
-from ..models import FeedInput
+from models import FeedInput
 
 FEED_TYPES_BY_PREFIX = (
     ("https://www.youtube.com/@", "yt"),

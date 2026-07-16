@@ -2,7 +2,8 @@ from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, Response
 
-from ...models import DeletedItemsInput, ItemsPage, ItemWithFeed
+from models import DeletedItemsInput, ItemsPage, ItemWithFeed
+
 from ..dependencies import DatabaseDependency, UserDependency
 
 router = APIRouter()

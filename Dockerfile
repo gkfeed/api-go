@@ -8,4 +8,4 @@ RUN pip install --no-cache-dir .
 
 ENV PYTHONUNBUFFERED=1
 
-ENTRYPOINT ["python", "-m", "gkfeed"]
+ENTRYPOINT ["python", "-m", "main"]

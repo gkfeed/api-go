@@ -1,6 +1,6 @@
 import pytest
 
-from gkfeed.services import create_feed_from_url
+from services import create_feed_from_url
 
 
 @pytest.mark.parametrize(

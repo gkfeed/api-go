@@ -2,8 +2,9 @@ from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 
-from ..config import Settings, load_settings
-from ..database import Database
+from config import Settings, load_settings
+from database import Database
+
 from .errors import validation_error_handler
 from .routes import api_router
 

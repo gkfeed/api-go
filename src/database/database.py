@@ -1,6 +1,7 @@
 from collections.abc import Sequence
 
-from ..models import Feed, FeedInput, Item, User
+from models import Feed, FeedInput, Item, User
+
 from .feeds import FeedRepository
 from .items import ItemRepository
 from .session import SessionFactory

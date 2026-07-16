@@ -2,8 +2,9 @@ from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, Response
 
-from ...models import Feed, FeedDeletion, FeedInput, FeedMutation, LazyFeedInput
-from ...services import create_feed_from_url, generate_rss
+from models import Feed, FeedDeletion, FeedInput, FeedMutation, LazyFeedInput
+from services import create_feed_from_url, generate_rss
+
 from ..dependencies import DatabaseDependency, UserDependency
 
 router = APIRouter()

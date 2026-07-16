@@ -6,8 +6,8 @@ from typing import Annotated
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
-from ..database import Database
-from ..models import User
+from database import Database
+from models import User
 
 logger = logging.getLogger(__name__)
 basic_auth = HTTPBasic(auto_error=False)

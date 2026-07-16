@@ -1,6 +1,6 @@
 import pytest
 
-from gkfeed.config import DEFAULT_ALLOWED_ORIGINS, load_settings, split_address
+from config import DEFAULT_ALLOWED_ORIGINS, load_settings, split_address
 
 
 def test_load_settings_from_environment(monkeypatch: pytest.MonkeyPatch) -> None:

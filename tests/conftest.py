@@ -6,8 +6,8 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from gkfeed.api import create_app
-from gkfeed.config import Settings
+from api import create_app
+from config import Settings
 
 SCHEMA = (
     "CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, password TEXT)",
