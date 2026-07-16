@@ -18,6 +18,19 @@ type feedMutationResponse struct {
 	Item    models.Feed `json:"item"`
 }
 
+// @Summary      Add feed by URL
+// @Description  Creates a feed by parsing the URL and detecting the source type (YouTube, TikTok, Rezka, etc.).
+// @Tags         feeds
+// @Accept       json
+// @Produce      json
+// @Param        feed  body      object{url=string}  true  "URL to create feed from"
+// @Security     BasicAuth
+// @Security     BearerAuth
+// @Success      200   {object}  feedMutationResponse
+// @Failure      400
+// @Failure      401
+// @Failure      500
+// @Router       /api/v1/add_lazy [post]
 func HandleAddFeedLazy(w http.ResponseWriter, r *http.Request) {
 	user, ok := authenticatedUser(w, r)
 	if !ok {

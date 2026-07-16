@@ -10,6 +10,16 @@ import (
 	"gkfeed/api/internal/services/rss"
 )
 
+// @Summary      Get RSS feed
+// @Description  Returns all user items as an RSS 2.0 XML feed.
+// @Tags         feeds
+// @Produce      application/rss+xml
+// @Security     BasicAuth
+// @Security     BearerAuth
+// @Success      200
+// @Failure      401
+// @Failure      500
+// @Router       /api/v1/feed [get]
 func HandleRSSFeed(w http.ResponseWriter, r *http.Request) {
 	user, ok := authenticatedUser(w, r)
 	if !ok {
