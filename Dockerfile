@@ -1,19 +1,11 @@
-FROM golang:1.24-alpine AS build
+FROM python:3.13-alpine
 
 WORKDIR /app
 
-RUN apk add --no-cache build-base
+COPY pyproject.toml ./
+COPY src ./src
+RUN pip install --no-cache-dir .
 
-COPY app/go.mod app/go.sum ./
-RUN go mod download
+ENV PYTHONUNBUFFERED=1
 
-COPY app/ .
-
-RUN CGO_ENABLED=1 GOOS=linux go build -trimpath -o /out/gkfeed-api ./cmd/api
-
-
-FROM alpine:latest
-
-COPY --from=build /out/gkfeed-api /usr/local/bin/gkfeed-api
-
-ENTRYPOINT ["gkfeed-api"]
+ENTRYPOINT ["python", "-m", "gkfeed"]

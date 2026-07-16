@@ -1,6 +1,4 @@
-.PHONY: check dev format install-lint lint merge-to-master test update vet
-
-APP_DIR := app
+.PHONY: check dev format lint merge-to-master test update
 
 update:
 	git fetch && git pull
@@ -9,24 +7,22 @@ update:
 	docker compose up -d
 
 test:
-	cd $(APP_DIR) && go test ./...
+	uv run pytest
 
-vet:
-	cd $(APP_DIR) && go vet ./...
-
-check: test vet
+check:
+	uv run ruff format --check .
+	uv run ruff check .
+	uv run pytest
 
 lint:
-	cd $(APP_DIR) && golangci-lint run ./...
+	uv run ruff check .
 
 format:
-	cd $(APP_DIR) && go fmt ./...
-
-install-lint:
-	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+	uv run ruff check --fix .
+	uv run ruff format .
 
 dev:
-	cd $(APP_DIR) && go run ./cmd/api
+	uv run uvicorn gkfeed.api:app --reload --host 0.0.0.0 --port 8086
 
 merge-to-master:
 	git checkout master

@@ -1,18 +1,19 @@
 # GKFeed API
 
-GKFeed is a small Go HTTP API that stores feed subscriptions and items in SQLite and can expose a user's items as JSON or RSS.
+GKFeed is a small FastAPI application that stores feed subscriptions and items in SQLite and can expose a user's items as JSON or RSS. Interactive OpenAPI documentation is available at `/docs` while the server is running.
 
 ## Requirements
 
-- Go 1.24 or newer
+- Python 3.12 or newer
+- [uv](https://docs.astral.sh/uv/)
 - A SQLite database with the GKFeed schema
-- A C compiler for `github.com/mattn/go-sqlite3`
 
 ## Development
 
-The default development configuration expects the database at `data/db.sqlite` from the repository root.
+Install the locked dependencies and start the development server:
 
 ```sh
+uv sync
 make dev
 ```
 
@@ -24,7 +25,7 @@ Run the local quality checks with:
 make check
 ```
 
-`make lint` additionally runs `golangci-lint`; install it first with `make install-lint`.
+`make format` applies Ruff's safe lint fixes and formatting.
 
 ## Configuration
 
@@ -33,7 +34,7 @@ Configuration is read from environment variables at startup:
 | Variable | Default | Description |
 | --- | --- | --- |
 | `GKFEED_ADDRESS` | `:8086` | HTTP server listen address |
-| `GKFEED_DB_PATH` | `../data/db.sqlite` | SQLite path relative to the `app` working directory |
+| `GKFEED_DB_PATH` | `data/db.sqlite` | SQLite path relative to the repository root |
 | `GKFEED_ALLOWED_ORIGINS` | Localhost development origins | Comma-separated CORS origins |
 
 ## Docker
