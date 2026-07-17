@@ -4,6 +4,7 @@ from models import Feed, FeedInput, Item, User
 
 from .feeds import FeedRepository
 from .items import ItemRepository
+from .refresh_tokens import RefreshTokenRepository
 from .session import SessionFactory
 from .users import UserRepository
 
@@ -16,6 +17,7 @@ class Database:
         self.users = UserRepository(sessions)
         self.feeds = FeedRepository(sessions)
         self.items = ItemRepository(sessions)
+        self.refresh_tokens = RefreshTokenRepository(sessions)
 
     def get_user(self, name: str) -> User | None:
         return self.users.get(name)

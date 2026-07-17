@@ -4,17 +4,61 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 
-def test_protected_route_requires_basic_auth(client: TestClient) -> None:
+def test_protected_route_requires_bearer_auth(client: TestClient) -> None:
     response = client.get("/api/v1/list")
 
     assert response.status_code == 401
-    assert response.headers["www-authenticate"] == 'Basic realm="Restricted"'
+    assert response.headers["www-authenticate"] == "Bearer"
 
 
-def test_invalid_password_is_rejected(client: TestClient) -> None:
-    response = client.get("/api/v1/list", auth=("reader", "wrong"))
+def test_basic_credentials_are_rejected_by_protected_routes(client: TestClient) -> None:
+    response = client.get("/api/v1/list", auth=("reader", "secret"))
 
     assert response.status_code == 401
+
+
+def test_login_rejects_invalid_password(client: TestClient) -> None:
+    response = client.post("/api/v1/auth/login", json={"username": "reader", "password": "wrong"})
+
+    assert response.status_code == 401
+
+    unknown = client.post("/api/v1/auth/login", json={"username": "missing", "password": "wrong"})
+    assert unknown.status_code == 401
+
+
+def test_login_refresh_and_logout(client: TestClient) -> None:
+    login = client.post("/api/v1/auth/login", json={"username": "reader", "password": "secret"})
+    assert login.status_code == 200
+    assert login.headers["cache-control"] == "no-store"
+    tokens = login.json()
+    assert tokens["token_type"] == "Bearer"
+    assert tokens["expires_in"] == 1800
+    assert tokens["refresh_expires_in"] == 7_776_000
+    assert (
+        client.get(
+            "/api/v1/list", headers={"Authorization": f"Bearer {tokens['access_token']}"}
+        ).status_code
+        == 200
+    )
+
+    refreshed = client.post("/api/v1/auth/refresh", json={"refresh_token": tokens["refresh_token"]})
+    assert refreshed.status_code == 200
+    rotated = refreshed.json()
+    assert rotated["refresh_token"] != tokens["refresh_token"]
+
+    reused = client.post("/api/v1/auth/refresh", json={"refresh_token": tokens["refresh_token"]})
+    assert reused.status_code == 401
+    assert (
+        client.get(
+            "/api/v1/list", headers={"Authorization": f"Bearer {rotated['access_token']}"}
+        ).status_code
+        == 401
+    )
+
+
+def test_logout_all_revokes_access_token(authenticated_client: TestClient) -> None:
+    assert authenticated_client.post("/api/v1/auth/logout-all").status_code == 204
+    assert authenticated_client.get("/api/v1/list").status_code == 401
 
 
 def test_add_and_list_feed(authenticated_client: TestClient) -> None:

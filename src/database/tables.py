@@ -37,3 +37,16 @@ class DeletedItemRecord(SQLModel, table=True):
 
     user_id: int = Field(primary_key=True)
     item_id: int = Field(primary_key=True)
+
+
+class RefreshTokenRecord(SQLModel, table=True):
+    __tablename__ = "auth_refresh_tokens"
+
+    id: int | None = Field(default=None, primary_key=True)
+    token_hash: bytes = Field(unique=True, index=True)
+    family_id: bytes = Field(index=True)
+    user_id: int = Field(index=True)
+    expires_at: int
+    created_at: int
+    revoked_at: int | None = None
+    replaced_by: bytes | None = None

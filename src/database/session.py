@@ -6,6 +6,7 @@ from sqlmodel import Session, create_engine
 
 class SessionFactory:
     def __init__(self, path: str) -> None:
+        self.path = path
         self.engine = create_engine(
             f"sqlite:///{path}",
             connect_args={"check_same_thread": False},

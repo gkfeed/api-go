@@ -7,7 +7,10 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from api import create_app
+from api.passwords import hash_password
 from config import Settings
+
+TEST_PASSWORD_HASH = hash_password("secret")
 
 SCHEMA = (
     "CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, password TEXT)",
@@ -23,8 +26,6 @@ SCHEMA = (
     )
     """,
     "CREATE TABLE deleted_items (user_id INTEGER, item_id INTEGER)",
-    "INSERT INTO users (id, name, password) VALUES (1, 'reader', 'secret')",
-    "INSERT INTO users (id, name, password) VALUES (2, 'other', 'secret')",
 )
 
 
@@ -34,6 +35,10 @@ def database_path(tmp_path: Path) -> Path:
     with sqlite3.connect(path) as connection:
         for statement in SCHEMA:
             connection.execute(statement)
+        connection.executemany(
+            "INSERT INTO users (id, name, password) VALUES (?, ?, ?)",
+            ((1, "reader", TEST_PASSWORD_HASH), (2, "other", TEST_PASSWORD_HASH)),
+        )
     return path
 
 
@@ -50,5 +55,7 @@ def client(fastapi_app: FastAPI) -> Iterator[TestClient]:
 
 @pytest.fixture
 def authenticated_client(client: TestClient) -> TestClient:
-    client.auth = ("reader", "secret")
+    response = client.post("/api/v1/auth/login", json={"username": "reader", "password": "secret"})
+    assert response.status_code == 200
+    client.headers["Authorization"] = f"Bearer {response.json()['access_token']}"
     return client
