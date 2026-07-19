@@ -62,6 +62,7 @@ Docker Compose mounts `~/.local/share/gkfeed/data` at `/data` and configures the
 | `DELETE` | `/api/v2/delete?id=<id>` | Bearer | Delete a feed |
 | `POST` | `/api/v2/add_deleted_items` | Bearer | Hide items for the user |
 | `GET` | `/api/v2/get_items` | Bearer | Return cursor-paginated items |
+| `GET` | `/api/v2/opengraph?url=<url>` | Bearer | Return Open Graph metadata for a public web page |
 | `GET` | `/api/v2/item?id=<id>` | None | Return an item and its feed |
 
 Log in and use the returned access token like this:

@@ -3,6 +3,8 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
+from models import OpenGraphMetadata
+
 
 def test_protected_route_requires_bearer_auth(client: TestClient) -> None:
     response = client.get("/api/v2/list")
@@ -187,3 +189,32 @@ def test_query_validation(authenticated_client: TestClient, client: TestClient) 
     assert client.get("/api/v2/item?id=0").status_code == 400
     assert authenticated_client.get("/api/v2/get_items?limit=0").status_code == 400
     assert authenticated_client.get("/api/v2/get_items?cursor=-1").status_code == 400
+
+
+def test_opengraph_route_requires_authentication(client: TestClient) -> None:
+    response = client.get("/api/v2/opengraph", params={"url": "https://example.com"})
+
+    assert response.status_code == 401
+
+
+def test_opengraph_route_returns_metadata(authenticated_client: TestClient, monkeypatch) -> None:
+    def fake_fetch(url: str) -> OpenGraphMetadata:
+        assert url == "https://example.com/post"
+        return OpenGraphMetadata(
+            url=url,
+            title="Example post",
+            image="https://example.com/image.jpg",
+        )
+
+    monkeypatch.setattr("api.routes.opengraph.fetch_open_graph", fake_fetch)
+
+    response = authenticated_client.get(
+        "/api/v2/opengraph", params={"url": "https://example.com/post"}
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "url": "https://example.com/post",
+        "title": "Example post",
+        "image": "https://example.com/image.jpg",
+    }

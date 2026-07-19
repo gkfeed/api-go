@@ -1,5 +1,6 @@
 from .feed import Feed, FeedDeletion, FeedInput, FeedMutation, LazyFeedInput
 from .item import DeletedItemsInput, Item, ItemsPage, ItemWithFeed
+from .opengraph import OpenGraphMetadata
 from .user import User
 
 __all__ = [
@@ -12,5 +13,6 @@ __all__ = [
     "ItemsPage",
     "ItemWithFeed",
     "LazyFeedInput",
+    "OpenGraphMetadata",
     "User",
 ]
