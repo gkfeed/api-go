@@ -51,30 +51,30 @@ Docker Compose mounts `~/.local/share/gkfeed/data` at `/data` and configures the
 
 | Method | Route | Authentication | Purpose |
 | --- | --- | --- | --- |
-| `POST` | `/api/v1/auth/login` | None | Exchange JSON `username` and `password` for access and refresh tokens |
-| `POST` | `/api/v1/auth/refresh` | Refresh token | Rotate the refresh token and issue a new access token |
-| `POST` | `/api/v1/auth/logout` | Refresh token | Revoke the refresh-token family and its access tokens |
-| `POST` | `/api/v1/auth/logout-all` | Bearer | Revoke every session belonging to the user |
-| `GET` | `/api/v1/list` | Bearer | List the user's feeds |
-| `GET` | `/api/v1/feed` | Bearer | Return the user's RSS feed |
-| `POST` | `/api/v1/add` | Bearer | Add a feed |
-| `POST` | `/api/v1/add_lazy` | Bearer | Add a feed inferred from its URL |
-| `DELETE` | `/api/v1/delete?id=<id>` | Bearer | Delete a feed |
-| `POST` | `/api/v1/add_deleted_items` | Bearer | Hide items for the user |
-| `GET` | `/api/v1/get_items` | Bearer | Return cursor-paginated items |
-| `GET` | `/api/v1/item?id=<id>` | None | Return an item and its feed |
+| `POST` | `/api/v2/auth/login` | None | Exchange JSON `username` and `password` for access and refresh tokens |
+| `POST` | `/api/v2/auth/refresh` | Refresh token | Rotate the refresh token and issue a new access token |
+| `POST` | `/api/v2/auth/logout` | Refresh token | Revoke the refresh-token family and its access tokens |
+| `POST` | `/api/v2/auth/logout-all` | Bearer | Revoke every session belonging to the user |
+| `GET` | `/api/v2/list` | Bearer | List the user's feeds |
+| `GET` | `/api/v2/feed` | Bearer | Return the user's RSS feed |
+| `POST` | `/api/v2/add` | Bearer | Add a feed |
+| `POST` | `/api/v2/add_lazy` | Bearer | Add a feed inferred from its URL |
+| `DELETE` | `/api/v2/delete?id=<id>` | Bearer | Delete a feed |
+| `POST` | `/api/v2/add_deleted_items` | Bearer | Hide items for the user |
+| `GET` | `/api/v2/get_items` | Bearer | Return cursor-paginated items |
+| `GET` | `/api/v2/item?id=<id>` | None | Return an item and its feed |
 
 Log in and use the returned access token like this:
 
 ```sh
-curl -sS -X POST http://localhost:8086/api/v1/auth/login \
+curl -sS -X POST http://localhost:8086/api/v2/auth/login \
   -H 'Content-Type: application/json' \
   -d '{"username":"reader","password":"your password"}'
 
-curl -H 'Authorization: Bearer <token>' http://localhost:8086/api/v1/list
+curl -H 'Authorization: Bearer <token>' http://localhost:8086/api/v2/list
 ```
 
-The response contains `access_token`, `refresh_token`, `token_type`, `expires_in`, and `refresh_expires_in`. Access tokens expire after 30 minutes and are held in memory. Refresh tokens have a rotating 90-day idle window and are exchanged at `/api/v1/auth/refresh`. Clients must allow only one refresh at a time and replace both stored tokens atomically. Reusing a token that has already been rotated revokes its entire token family.
+The response contains `access_token`, `refresh_token`, `token_type`, `expires_in`, and `refresh_expires_in`. Access tokens expire after 30 minutes and are held in memory. Refresh tokens have a rotating 90-day idle window and are exchanged at `/api/v2/auth/refresh`. Clients must allow only one refresh at a time and replace both stored tokens atomically. Reusing a token that has already been rotated revokes its entire token family.
 
 Refresh-token SHA-256 digests and their revocation state are persisted in the automatically created `auth_refresh_tokens` SQLite table. Raw refresh tokens are never stored. An API restart invalidates access tokens, but a valid refresh token can obtain a new one.
 

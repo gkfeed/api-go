@@ -12,7 +12,7 @@ from .routes import api_router
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     configuration = settings or load_settings()
-    app = FastAPI(title="GKFeed API", version="1.0.0")
+    app = FastAPI(title="GKFeed API", version="2.0.0")
     app.state.database = Database(configuration.database_path)
     app.state.sessions = SessionStore()
     app.add_middleware(

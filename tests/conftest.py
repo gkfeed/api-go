@@ -55,7 +55,7 @@ def client(fastapi_app: FastAPI) -> Iterator[TestClient]:
 
 @pytest.fixture
 def authenticated_client(client: TestClient) -> TestClient:
-    response = client.post("/api/v1/auth/login", json={"username": "reader", "password": "secret"})
+    response = client.post("/api/v2/auth/login", json={"username": "reader", "password": "secret"})
     assert response.status_code == 200
     client.headers["Authorization"] = f"Bearer {response.json()['access_token']}"
     return client

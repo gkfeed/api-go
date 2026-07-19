@@ -9,7 +9,7 @@ def generate_rss(items: list[Item]) -> bytes:
     root = Element("rss", version="2.0")
     channel = SubElement(root, "channel")
     SubElement(channel, "title").text = "GKFeed"
-    SubElement(channel, "link").text = "/api/v1/feed"
+    SubElement(channel, "link").text = "/api/v2/feed"
     SubElement(channel, "description").text = "Personal GKFeed items"
 
     for item in items:
