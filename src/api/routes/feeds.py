@@ -5,7 +5,8 @@ from fastapi import APIRouter, HTTPException, Query, Response
 from models import Feed, FeedDeletion, FeedInput, FeedMutation, LazyFeedInput
 from services import create_feed_from_url, generate_rss
 
-from ..dependencies import DatabaseDependency, UserDependency
+from ..auth.dependencies import UserDependency
+from ..dependencies import DatabaseDependency
 
 router = APIRouter()
 

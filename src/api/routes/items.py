@@ -4,7 +4,8 @@ from fastapi import APIRouter, HTTPException, Query, Response
 
 from models import DeletedItemsInput, ItemsPage, ItemWithFeed
 
-from ..dependencies import DatabaseDependency, UserDependency
+from ..auth.dependencies import UserDependency
+from ..dependencies import DatabaseDependency
 
 router = APIRouter()
 

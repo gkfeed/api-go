@@ -1,6 +1,6 @@
 import pytest
 
-from api.passwords import InvalidPasswordHashError, hash_password, verify_password
+from services.passwords import InvalidPasswordHashError, hash_password, verify_password
 
 
 def test_argon2id_hashes_use_unique_salts() -> None:

@@ -1,6 +1,6 @@
 import sys
 
-from api.passwords import hash_password
+from services.passwords import hash_password
 
 
 def main() -> None:

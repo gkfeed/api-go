@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Query
 from models import OpenGraphMetadata
 from services import fetch_open_graph
 
-from ..dependencies import UserDependency
+from ..auth.dependencies import UserDependency
 
 router = APIRouter()
 

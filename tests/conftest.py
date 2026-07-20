@@ -7,8 +7,8 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from api import create_app
-from api.passwords import hash_password
 from config import Settings
+from services.passwords import hash_password
 
 TEST_PASSWORD_HASH = hash_password("secret")
 
