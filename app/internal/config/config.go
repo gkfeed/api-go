@@ -3,19 +3,20 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 )
 
 const (
-	addressEnvironmentVariable        = "GKFEED_ADDRESS"
-	databaseEnvironmentVariable       = "GKFEED_DB_PATH"
-	allowedOriginsEnvironmentVariable = "GKFEED_ALLOWED_ORIGINS"
-	jwtSecretEnvironmentVariable      = "GKFEED_JWT_SECRET"
-	jwtAccessTTLEnvironmentVariable   = "GKFEED_JWT_ACCESS_TTL"
-	jwtRefreshTTLEnvironmentVariable  = "GKFEED_JWT_REFRESH_TTL"
-	webauthnRPIDEnvironmentVariable   = "GKFEED_WEBAUTHN_RP_ID"
-	webauthnRPOriginEnvironmentVariable = "GKFEED_WEBAUTHN_RP_ORIGIN"
+	addressEnvironmentVariable           = "GKFEED_ADDRESS"
+	databaseEnvironmentVariable          = "GKFEED_DB_PATH"
+	allowedOriginsEnvironmentVariable    = "GKFEED_ALLOWED_ORIGINS"
+	jwtSecretEnvironmentVariable         = "GKFEED_JWT_SECRET"
+	jwtAccessTTLEnvironmentVariable      = "GKFEED_JWT_ACCESS_TTL"
+	jwtRefreshTTLEnvironmentVariable     = "GKFEED_JWT_REFRESH_TTL"
+	webauthnRPIDEnvironmentVariable      = "GKFEED_WEBAUTHN_RP_ID"
+	webauthnRPOriginEnvironmentVariable  = "GKFEED_WEBAUTHN_RP_ORIGIN"
 	webauthnRPDisplayEnvironmentVariable = "GKFEED_WEBAUTHN_RP_DISPLAY"
 )
 
@@ -26,9 +27,9 @@ var defaultAllowedOrigins = []string{
 }
 
 const (
-	defaultJWTSecret      = "change-me-in-production"
-	defaultAccessTokenTTL  = 15 * time.Minute
-	defaultRefreshTokenTTL = 720 * time.Hour
+	defaultJWTSecret         = "change-me-in-production"
+	defaultAccessTokenTTL    = 15 * time.Minute
+	defaultRefreshTokenTTL   = 720 * time.Hour
 	defaultWebAuthnRPDisplay = "GKFeed"
 )
 
@@ -38,7 +39,7 @@ type Config struct {
 	AllowedOrigins    []string
 	ReadHeaderTimeout time.Duration
 
-	JWTSecret      string
+	JWTSecret       string
 	AccessTokenTTL  time.Duration
 	RefreshTokenTTL time.Duration
 
@@ -54,7 +55,7 @@ func Load() Config {
 		AllowedOrigins:    allowedOrigins(),
 		ReadHeaderTimeout: 5 * time.Second,
 
-		JWTSecret:      valueOrDefault(jwtSecretEnvironmentVariable, defaultJWTSecret),
+		JWTSecret:       valueOrDefault(jwtSecretEnvironmentVariable, defaultJWTSecret),
 		AccessTokenTTL:  durationOrDefault(jwtAccessTTLEnvironmentVariable, defaultAccessTokenTTL),
 		RefreshTokenTTL: durationOrDefault(jwtRefreshTTLEnvironmentVariable, defaultRefreshTokenTTL),
 
@@ -67,7 +68,7 @@ func Load() Config {
 func allowedOrigins() []string {
 	value := os.Getenv(allowedOriginsEnvironmentVariable)
 	if value == "" {
-		return append([]string(nil), defaultAllowedOrigins...)
+		return slices.Clone(defaultAllowedOrigins)
 	}
 
 	origins := make([]string, 0)
