@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"gkfeed/api/internal/auth"
 	"gkfeed/api/internal/models"
-	"gkfeed/api/pkg/auth"
 )
 
 const maxRequestBodySize = 1 << 20

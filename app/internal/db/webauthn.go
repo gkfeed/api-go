@@ -105,27 +105,25 @@ func GetWebAuthnCredentialsByUserID(userID int) ([]webauthn.Credential, error) {
 	return credentials, nil
 }
 
-func GetWebAuthnCredentialRowByID(credentialID []byte) (credentialJSON string, userID int, name string, err error) {
-	database, dbErr := getDB()
-	if dbErr != nil {
-		err = fmt.Errorf("open database: %w", dbErr)
-		return
+func GetWebAuthnUserIDByCredentialID(credentialID []byte) (int, error) {
+	database, err := getDB()
+	if err != nil {
+		return 0, fmt.Errorf("open database: %w", err)
 	}
 	defer database.Close()
 
+	var userID int
 	err = database.QueryRow(
-		"SELECT credential, user_id, name FROM webauthn_credentials WHERE id = ?",
+		"SELECT user_id FROM webauthn_credentials WHERE id = ?",
 		credentialID,
-	).Scan(&credentialJSON, &userID, &name)
+	).Scan(&userID)
 	if errors.Is(err, sql.ErrNoRows) {
-		err = fmt.Errorf("webauthn credential not found: %w", err)
-		return
+		return 0, fmt.Errorf("webauthn credential not found: %w", err)
 	}
 	if err != nil {
-		err = fmt.Errorf("query webauthn credential: %w", err)
-		return
+		return 0, fmt.Errorf("query webauthn credential: %w", err)
 	}
-	return
+	return userID, nil
 }
 
 func DeleteWebAuthnCredential(credentialID []byte, userID int) (bool, error) {
@@ -180,8 +178,8 @@ func ListUserWebAuthnCredentials(userID int) ([]WebAuthnCredentialInfo, error) {
 }
 
 type WebAuthnCredentialInfo struct {
-	ID         []byte   `json:"id"`
-	Name       string   `json:"name"`
-	CreatedAt  string   `json:"created_at"`
-	LastUsedAt *string  `json:"last_used_at"`
+	ID         []byte  `json:"id"`
+	Name       string  `json:"name"`
+	CreatedAt  string  `json:"created_at"`
+	LastUsedAt *string `json:"last_used_at"`
 }

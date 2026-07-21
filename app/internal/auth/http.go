@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"strings"
 
-	authsvc "gkfeed/api/internal/auth"
 	"gkfeed/api/internal/config"
 	"gkfeed/api/internal/db"
 	"gkfeed/api/internal/models"
@@ -100,7 +99,7 @@ func tryJWT(r *http.Request, cfg config.Config) (models.User, bool) {
 		return models.User{}, false
 	}
 
-	claims, err := authsvc.ValidateAccessToken(tokenString, cfg)
+	claims, err := ValidateAccessToken(tokenString, cfg)
 	if err != nil {
 		return models.User{}, false
 	}

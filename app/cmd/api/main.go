@@ -5,11 +5,10 @@ import (
 	"log"
 	"net/http"
 
-	authsvc "gkfeed/api/internal/auth"
+	"gkfeed/api/internal/auth"
 	"gkfeed/api/internal/config"
 	"gkfeed/api/internal/db"
 	"gkfeed/api/internal/handlers"
-	"gkfeed/api/pkg/auth"
 
 	_ "gkfeed/api/cmd/api/docs"
 
@@ -75,19 +74,19 @@ func newHandler(configuration config.Config) http.Handler {
 	api.HandleFunc("/item", handlers.HandleGetItemByID).Methods(http.MethodGet)
 	api.HandleFunc("/get_items", authenticate(handlers.HandleGetItems)).Methods(http.MethodGet)
 
-	if waSvc, err := authsvc.NewService(configuration); err == nil {
-		ah := handlers.NewAuthHandler(configuration, waSvc)
+	if webAuthnService, err := auth.NewWebAuthnService(configuration); err == nil {
+		authHandler := handlers.NewAuthHandler(configuration, webAuthnService)
 
 		authRouter := router.PathPrefix("/auth").Subrouter()
-		authRouter.HandleFunc("/register/begin", authenticate(ah.BeginRegistration)).Methods(http.MethodPost)
-		authRouter.HandleFunc("/register/finish", authenticate(ah.FinishRegistration)).Methods(http.MethodPost)
-		authRouter.HandleFunc("/login/begin", ah.BeginLogin).Methods(http.MethodPost)
-		authRouter.HandleFunc("/login/finish", ah.FinishLogin).Methods(http.MethodPost)
-		authRouter.HandleFunc("/refresh", ah.Refresh).Methods(http.MethodPost)
-		authRouter.HandleFunc("/logout", authenticate(ah.Logout)).Methods(http.MethodPost)
-		authRouter.HandleFunc("/credentials", authenticate(ah.ListCredentials)).Methods(http.MethodGet)
-		authRouter.HandleFunc("/credentials/{id}", authenticate(ah.DeleteCredential)).Methods(http.MethodDelete)
-		authRouter.HandleFunc("/me", jwtAuth(ah.Me)).Methods(http.MethodGet)
+		authRouter.HandleFunc("/register/begin", authenticate(authHandler.BeginRegistration)).Methods(http.MethodPost)
+		authRouter.HandleFunc("/register/finish", authenticate(authHandler.FinishRegistration)).Methods(http.MethodPost)
+		authRouter.HandleFunc("/login/begin", authHandler.BeginLogin).Methods(http.MethodPost)
+		authRouter.HandleFunc("/login/finish", authHandler.FinishLogin).Methods(http.MethodPost)
+		authRouter.HandleFunc("/refresh", authHandler.Refresh).Methods(http.MethodPost)
+		authRouter.HandleFunc("/logout", authenticate(authHandler.Logout)).Methods(http.MethodPost)
+		authRouter.HandleFunc("/credentials", authenticate(authHandler.ListCredentials)).Methods(http.MethodGet)
+		authRouter.HandleFunc("/credentials/{id}", authenticate(authHandler.DeleteCredential)).Methods(http.MethodDelete)
+		authRouter.HandleFunc("/me", jwtAuth(authHandler.Me)).Methods(http.MethodGet)
 	}
 
 	corsHandler := cors.New(cors.Options{

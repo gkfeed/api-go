@@ -18,12 +18,12 @@ import (
 )
 
 type AuthHandler struct {
-	cfg   config.Config
-	waSvc *authsvc.Service
+	cfg             config.Config
+	webAuthnService *authsvc.WebAuthnService
 }
 
-func NewAuthHandler(cfg config.Config, waSvc *authsvc.Service) *AuthHandler {
-	return &AuthHandler{cfg: cfg, waSvc: waSvc}
+func NewAuthHandler(cfg config.Config, webAuthnService *authsvc.WebAuthnService) *AuthHandler {
+	return &AuthHandler{cfg: cfg, webAuthnService: webAuthnService}
 }
 
 type registerBeginRequest struct {
@@ -51,13 +51,11 @@ func (h *AuthHandler) BeginRegistration(w http.ResponseWriter, r *http.Request) 
 	var req registerBeginRequest
 	_ = json.NewDecoder(r.Body).Decode(&req)
 
-	creation, err := h.waSvc.BeginRegistration(user)
+	creation, err := h.webAuthnService.BeginRegistration(user, req.Name)
 	if err != nil {
 		writeInternalServerError(w, fmt.Errorf("begin registration: %w", err))
 		return
 	}
-
-	h.waSvc.SetRegistrationName(string(creation.Response.Challenge), req.Name)
 
 	writeJSON(w, creation)
 }
@@ -87,16 +85,9 @@ func (h *AuthHandler) FinishRegistration(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	credential, err := h.waSvc.FinishRegistration(user, parsedResponse)
+	credential, name, err := h.webAuthnService.FinishRegistration(user, parsedResponse)
 	if err != nil {
 		writeInternalServerError(w, fmt.Errorf("finish registration: %w", err))
-		return
-	}
-
-	name := h.waSvc.PopRegistrationName(string(parsedResponse.Response.CollectedClientData.Challenge))
-
-	if err := h.waSvc.RegisterCredential(user, credential, name); err != nil {
-		writeInternalServerError(w, fmt.Errorf("store credential: %w", err))
 		return
 	}
 
@@ -117,7 +108,7 @@ func (h *AuthHandler) FinishRegistration(w http.ResponseWriter, r *http.Request)
 // @Failure      500
 // @Router       /auth/login/begin [post]
 func (h *AuthHandler) BeginLogin(w http.ResponseWriter, r *http.Request) {
-	assertion, err := h.waSvc.BeginLogin()
+	assertion, err := h.webAuthnService.BeginLogin()
 	if err != nil {
 		writeInternalServerError(w, fmt.Errorf("begin login: %w", err))
 		return
@@ -143,7 +134,7 @@ func (h *AuthHandler) FinishLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	credential, user, err := h.waSvc.FinishLogin(parsedResponse)
+	credential, user, err := h.webAuthnService.FinishLogin(parsedResponse)
 	if err != nil {
 		writeInternalServerError(w, fmt.Errorf("finish login: %w", err))
 		return

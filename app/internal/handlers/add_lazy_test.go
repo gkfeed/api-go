@@ -8,8 +8,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"gkfeed/api/internal/auth"
 	"gkfeed/api/internal/models"
-	"gkfeed/api/pkg/auth"
 )
 
 func mockAddFeed(feed models.Feed, userID int) (models.Feed, error) {

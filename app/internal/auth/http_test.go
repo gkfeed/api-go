@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	authsvc "gkfeed/api/internal/auth"
 	"gkfeed/api/internal/config"
 	"gkfeed/api/internal/models"
 )
@@ -77,11 +76,11 @@ func TestBasicAuthReturnsServerErrorWhenLookupFails(t *testing.T) {
 
 func TestAuthenticateJWT(t *testing.T) {
 	cfg := config.Config{
-		JWTSecret:     "test-secret",
+		JWTSecret:      "test-secret",
 		AccessTokenTTL: 15 * time.Minute,
 	}
 
-	token, err := authsvc.GenerateAccessToken(42, "jwtuser", cfg)
+	token, err := GenerateAccessToken(42, "jwtuser", cfg)
 	if err != nil {
 		t.Fatalf("GenerateAccessToken() returned error: %v", err)
 	}
@@ -156,7 +155,7 @@ func TestAuthenticateRejectsInvalidJWT(t *testing.T) {
 
 	t.Run("wrong secret", func(t *testing.T) {
 		validCfg := config.Config{JWTSecret: "correct-secret", AccessTokenTTL: 15 * time.Minute}
-		token, err := authsvc.GenerateAccessToken(1, "user", validCfg)
+		token, err := GenerateAccessToken(1, "user", validCfg)
 		if err != nil {
 			t.Fatalf("GenerateAccessToken() returned error: %v", err)
 		}
@@ -189,11 +188,11 @@ func TestAuthenticateRejectsWithoutCredentials(t *testing.T) {
 
 func TestJWTAuthRejectsBasicAuth(t *testing.T) {
 	cfg := config.Config{
-		JWTSecret:     "test-secret",
+		JWTSecret:      "test-secret",
 		AccessTokenTTL: 15 * time.Minute,
 	}
 
-	token, err := authsvc.GenerateAccessToken(1, "user", cfg)
+	token, err := GenerateAccessToken(1, "user", cfg)
 	if err != nil {
 		t.Fatalf("GenerateAccessToken() returned error: %v", err)
 	}
@@ -229,7 +228,7 @@ func TestJWTAuthRejectsExpiredToken(t *testing.T) {
 		AccessTokenTTL: -1 * time.Hour,
 	}
 
-	token, err := authsvc.GenerateAccessToken(1, "user", cfg)
+	token, err := GenerateAccessToken(1, "user", cfg)
 	if err != nil {
 		t.Fatalf("GenerateAccessToken() returned error: %v", err)
 	}
@@ -254,7 +253,7 @@ func TestGenerateAndValidateAccessToken(t *testing.T) {
 		AccessTokenTTL: 15 * time.Minute,
 	}
 
-	token, err := authsvc.GenerateAccessToken(42, "testuser", cfg)
+	token, err := GenerateAccessToken(42, "testuser", cfg)
 	if err != nil {
 		t.Fatalf("GenerateAccessToken() returned error: %v", err)
 	}
@@ -262,7 +261,7 @@ func TestGenerateAndValidateAccessToken(t *testing.T) {
 		t.Fatal("GenerateAccessToken() returned empty token")
 	}
 
-	claims, err := authsvc.ValidateAccessToken(token, cfg)
+	claims, err := ValidateAccessToken(token, cfg)
 	if err != nil {
 		t.Fatalf("ValidateAccessToken() returned error: %v", err)
 	}
@@ -279,7 +278,7 @@ func TestValidateAccessTokenRejectsWrongSecret(t *testing.T) {
 		JWTSecret:      "test-secret",
 		AccessTokenTTL: 15 * time.Minute,
 	}
-	token, err := authsvc.GenerateAccessToken(42, "user", cfg)
+	token, err := GenerateAccessToken(42, "user", cfg)
 	if err != nil {
 		t.Fatalf("GenerateAccessToken() returned error: %v", err)
 	}
@@ -287,7 +286,7 @@ func TestValidateAccessTokenRejectsWrongSecret(t *testing.T) {
 	otherCfg := config.Config{
 		JWTSecret: "different-secret",
 	}
-	_, err = authsvc.ValidateAccessToken(token, otherCfg)
+	_, err = ValidateAccessToken(token, otherCfg)
 	if err == nil {
 		t.Fatal("ValidateAccessToken() should have returned error for wrong secret")
 	}
