@@ -24,7 +24,8 @@ Run the local quality checks with:
 make check
 ```
 
-`make lint` additionally runs `golangci-lint`; install it first with `make install-lint`.
+`make lint` runs `go vet` and the same `gopls` diagnostics used by Go editor
+integrations. Install `gopls` first with `make install-lint`.
 
 ## Configuration
 
