@@ -417,7 +417,7 @@
                 }
             }
         },
-        "/auth/credentials": {
+        "/api/v1/auth/credentials": {
             "get": {
                 "security": [
                     {
@@ -475,7 +475,7 @@
                 }
             }
         },
-        "/auth/credentials/{id}": {
+        "/api/v1/auth/credentials/{id}": {
             "delete": {
                 "security": [
                     {
@@ -518,7 +518,7 @@
                 }
             }
         },
-        "/auth/login/begin": {
+        "/api/v1/auth/login/begin": {
             "post": {
                 "description": "Starts discoverable WebAuthn login, returns assertion options for the browser.",
                 "produces": [
@@ -538,7 +538,7 @@
                 }
             }
         },
-        "/auth/login/finish": {
+        "/api/v1/auth/login/finish": {
             "post": {
                 "description": "Completes WebAuthn authentication, returns a JWT access/refresh token pair.",
                 "consumes": [
@@ -596,7 +596,7 @@
                 }
             }
         },
-        "/auth/logout": {
+        "/api/v1/auth/logout": {
             "post": {
                 "security": [
                     {
@@ -624,7 +624,7 @@
                 }
             }
         },
-        "/auth/me": {
+        "/api/v1/auth/me": {
             "get": {
                 "security": [
                     {
@@ -670,7 +670,7 @@
                 }
             }
         },
-        "/auth/refresh": {
+        "/api/v1/auth/refresh": {
             "post": {
                 "description": "Exchanges a valid refresh token for a new access/refresh token pair. Old refresh token is invalidated.",
                 "consumes": [
@@ -728,7 +728,7 @@
                 }
             }
         },
-        "/auth/register/begin": {
+        "/api/v1/auth/register/begin": {
             "post": {
                 "security": [
                     {
@@ -772,7 +772,7 @@
                 }
             }
         },
-        "/auth/register/finish": {
+        "/api/v1/auth/register/finish": {
             "post": {
                 "security": [
                     {

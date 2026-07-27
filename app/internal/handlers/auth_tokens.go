@@ -26,7 +26,7 @@ type refreshRequest struct {
 // @Failure      400
 // @Failure      401
 // @Failure      500
-// @Router       /auth/refresh [post]
+// @Router       /api/v1/auth/refresh [post]
 func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 	var req refreshRequest
 	if !decodeJSON(w, r, &req) {
@@ -89,7 +89,7 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 // @Success      204
 // @Failure      401
 // @Failure      500
-// @Router       /auth/logout [post]
+// @Router       /api/v1/auth/logout [post]
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	user, ok := authenticatedUser(w, r)
 	if !ok {

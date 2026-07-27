@@ -10,7 +10,7 @@ import "net/http"
 // @Security     BearerAuth
 // @Success      200  {object}  object{id=int,name=string}
 // @Failure      401
-// @Router       /auth/me [get]
+// @Router       /api/v1/auth/me [get]
 func HandleMe(w http.ResponseWriter, r *http.Request) {
 	user, ok := authenticatedUser(w, r)
 	if !ok {

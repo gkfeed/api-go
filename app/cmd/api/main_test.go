@@ -45,14 +45,14 @@ func TestMeRouteAcceptsBasicAuth(t *testing.T) {
 		t.Fatalf("insert test user: %v", err)
 	}
 
-	request := httptest.NewRequest(http.MethodGet, "/auth/me", nil)
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/auth/me", nil)
 	request.SetBasicAuth("reader", "secret")
 	response := httptest.NewRecorder()
 
 	newHandler(config.Config{}).ServeHTTP(response, request)
 
 	if response.Code != http.StatusOK {
-		t.Fatalf("GET /auth/me returned status %d; want %d", response.Code, http.StatusOK)
+		t.Fatalf("GET /api/v1/auth/me returned status %d; want %d", response.Code, http.StatusOK)
 	}
 
 	var user struct {
@@ -63,6 +63,6 @@ func TestMeRouteAcceptsBasicAuth(t *testing.T) {
 		t.Fatalf("decode response: %v", err)
 	}
 	if user.ID != 7 || user.Name != "reader" {
-		t.Fatalf("GET /auth/me returned %#v; want reader with ID 7", user)
+		t.Fatalf("GET /api/v1/auth/me returned %#v; want reader with ID 7", user)
 	}
 }

@@ -73,7 +73,7 @@ func newHandler(configuration config.Config) http.Handler {
 	api.HandleFunc("/item", handlers.HandleGetItemByID).Methods(http.MethodGet)
 	api.HandleFunc("/get_items", authenticate(handlers.HandleGetItems)).Methods(http.MethodGet)
 
-	authRouter := router.PathPrefix("/auth").Subrouter()
+	authRouter := api.PathPrefix("/auth").Subrouter()
 	authRouter.HandleFunc("/me", authenticate(handlers.HandleMe)).Methods(http.MethodGet)
 
 	if webAuthnService, err := auth.NewWebAuthnService(configuration); err == nil {

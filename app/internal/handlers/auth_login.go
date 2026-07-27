@@ -20,7 +20,7 @@ import (
 // @Produce      json
 // @Success      200
 // @Failure      500
-// @Router       /auth/login/begin [post]
+// @Router       /api/v1/auth/login/begin [post]
 func (h *AuthHandler) BeginLogin(w http.ResponseWriter, _ *http.Request) {
 	assertion, err := h.webAuthnService.BeginLogin()
 	if err != nil {
@@ -40,7 +40,7 @@ func (h *AuthHandler) BeginLogin(w http.ResponseWriter, _ *http.Request) {
 // @Success      200   {object}  object{access_token=string,refresh_token=string,credential_id=string}
 // @Failure      400
 // @Failure      500
-// @Router       /auth/login/finish [post]
+// @Router       /api/v1/auth/login/finish [post]
 func (h *AuthHandler) FinishLogin(w http.ResponseWriter, r *http.Request) {
 	parsedResponse, err := protocol.ParseCredentialRequestResponseBody(r.Body)
 	if err != nil {

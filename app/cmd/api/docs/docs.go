@@ -426,7 +426,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/auth/credentials": {
+        "/api/v1/auth/credentials": {
             "get": {
                 "security": [
                     {
@@ -484,7 +484,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/auth/credentials/{id}": {
+        "/api/v1/auth/credentials/{id}": {
             "delete": {
                 "security": [
                     {
@@ -527,7 +527,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/auth/login/begin": {
+        "/api/v1/auth/login/begin": {
             "post": {
                 "description": "Starts discoverable WebAuthn login, returns assertion options for the browser.",
                 "produces": [
@@ -547,7 +547,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/auth/login/finish": {
+        "/api/v1/auth/login/finish": {
             "post": {
                 "description": "Completes WebAuthn authentication, returns a JWT access/refresh token pair.",
                 "consumes": [
@@ -605,7 +605,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/auth/logout": {
+        "/api/v1/auth/logout": {
             "post": {
                 "security": [
                     {
@@ -633,7 +633,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/auth/me": {
+        "/api/v1/auth/me": {
             "get": {
                 "security": [
                     {
@@ -679,7 +679,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/auth/refresh": {
+        "/api/v1/auth/refresh": {
             "post": {
                 "description": "Exchanges a valid refresh token for a new access/refresh token pair. Old refresh token is invalidated.",
                 "consumes": [
@@ -737,7 +737,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/auth/register/begin": {
+        "/api/v1/auth/register/begin": {
             "post": {
                 "security": [
                     {
@@ -781,7 +781,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/auth/register/finish": {
+        "/api/v1/auth/register/finish": {
             "post": {
                 "security": [
                     {

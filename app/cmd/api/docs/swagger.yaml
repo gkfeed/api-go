@@ -328,7 +328,7 @@ paths:
       summary: List feeds
       tags:
       - feeds
-  /auth/credentials:
+  /api/v1/auth/credentials:
     get:
       description: Returns all registered passkeys for the authenticated user.
       produces:
@@ -361,7 +361,7 @@ paths:
       summary: List passkeys
       tags:
       - auth
-  /auth/credentials/{id}:
+  /api/v1/auth/credentials/{id}:
     delete:
       description: Removes a specific passkey credential for the authenticated user.
       parameters:
@@ -387,7 +387,7 @@ paths:
       summary: Delete passkey
       tags:
       - auth
-  /auth/login/begin:
+  /api/v1/auth/login/begin:
     post:
       description: Starts discoverable WebAuthn login, returns assertion options for
         the browser.
@@ -401,7 +401,7 @@ paths:
       summary: Begin passkey login
       tags:
       - auth
-  /auth/login/finish:
+  /api/v1/auth/login/finish:
     post:
       consumes:
       - application/json
@@ -437,7 +437,7 @@ paths:
       summary: Finish passkey login
       tags:
       - auth
-  /auth/logout:
+  /api/v1/auth/logout:
     post:
       description: Invalidates all refresh tokens for the authenticated user.
       responses:
@@ -453,7 +453,7 @@ paths:
       summary: Logout
       tags:
       - auth
-  /auth/me:
+  /api/v1/auth/me:
     get:
       description: Returns the authenticated user's ID and name.
       produces:
@@ -478,7 +478,7 @@ paths:
       summary: Current user
       tags:
       - auth
-  /auth/refresh:
+  /api/v1/auth/refresh:
     post:
       consumes:
       - application/json
@@ -514,7 +514,7 @@ paths:
       summary: Refresh access token
       tags:
       - auth
-  /auth/register/begin:
+  /api/v1/auth/register/begin:
     post:
       consumes:
       - application/json
@@ -541,7 +541,7 @@ paths:
       summary: Begin passkey registration
       tags:
       - auth
-  /auth/register/finish:
+  /api/v1/auth/register/finish:
     post:
       consumes:
       - application/json

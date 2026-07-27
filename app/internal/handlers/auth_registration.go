@@ -24,7 +24,7 @@ type registerBeginRequest struct {
 // @Success      200
 // @Failure      401
 // @Failure      500
-// @Router       /auth/register/begin [post]
+// @Router       /api/v1/auth/register/begin [post]
 func (h *AuthHandler) BeginRegistration(w http.ResponseWriter, r *http.Request) {
 	user, ok := authenticatedUser(w, r)
 	if !ok {
@@ -55,7 +55,7 @@ func (h *AuthHandler) BeginRegistration(w http.ResponseWriter, r *http.Request) 
 // @Failure      400
 // @Failure      401
 // @Failure      500
-// @Router       /auth/register/finish [post]
+// @Router       /api/v1/auth/register/finish [post]
 func (h *AuthHandler) FinishRegistration(w http.ResponseWriter, r *http.Request) {
 	user, ok := authenticatedUser(w, r)
 	if !ok {

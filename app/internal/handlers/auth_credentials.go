@@ -19,7 +19,7 @@ import (
 // @Success      200  {array}   object{id=string,name=string,created_at=string,last_used_at=string}
 // @Failure      401
 // @Failure      500
-// @Router       /auth/credentials [get]
+// @Router       /api/v1/auth/credentials [get]
 func (h *AuthHandler) ListCredentials(w http.ResponseWriter, r *http.Request) {
 	user, ok := authenticatedUser(w, r)
 	if !ok {
@@ -63,7 +63,7 @@ func (h *AuthHandler) ListCredentials(w http.ResponseWriter, r *http.Request) {
 // @Failure      401
 // @Failure      404
 // @Failure      500
-// @Router       /auth/credentials/{id} [delete]
+// @Router       /api/v1/auth/credentials/{id} [delete]
 func (h *AuthHandler) DeleteCredential(w http.ResponseWriter, r *http.Request) {
 	user, ok := authenticatedUser(w, r)
 	if !ok {
