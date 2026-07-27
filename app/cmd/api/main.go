@@ -53,7 +53,6 @@ func main() {
 func newHandler(configuration config.Config) http.Handler {
 	router := mux.NewRouter()
 	authenticate := auth.Authenticate(configuration)
-	jwtAuth := auth.JWTAuth(configuration)
 
 	router.PathPrefix("/swagger/").Handler(httpSwagger.Handler(
 		httpSwagger.URL("/swagger/doc.json"),
@@ -74,10 +73,12 @@ func newHandler(configuration config.Config) http.Handler {
 	api.HandleFunc("/item", handlers.HandleGetItemByID).Methods(http.MethodGet)
 	api.HandleFunc("/get_items", authenticate(handlers.HandleGetItems)).Methods(http.MethodGet)
 
+	authRouter := router.PathPrefix("/auth").Subrouter()
+	authRouter.HandleFunc("/me", authenticate(handlers.HandleMe)).Methods(http.MethodGet)
+
 	if webAuthnService, err := auth.NewWebAuthnService(configuration); err == nil {
 		authHandler := handlers.NewAuthHandler(configuration, webAuthnService)
 
-		authRouter := router.PathPrefix("/auth").Subrouter()
 		authRouter.HandleFunc("/register/begin", authenticate(authHandler.BeginRegistration)).Methods(http.MethodPost)
 		authRouter.HandleFunc("/register/finish", authenticate(authHandler.FinishRegistration)).Methods(http.MethodPost)
 		authRouter.HandleFunc("/login/begin", authHandler.BeginLogin).Methods(http.MethodPost)
@@ -86,7 +87,6 @@ func newHandler(configuration config.Config) http.Handler {
 		authRouter.HandleFunc("/logout", authenticate(authHandler.Logout)).Methods(http.MethodPost)
 		authRouter.HandleFunc("/credentials", authenticate(authHandler.ListCredentials)).Methods(http.MethodGet)
 		authRouter.HandleFunc("/credentials/{id}", authenticate(authHandler.DeleteCredential)).Methods(http.MethodDelete)
-		authRouter.HandleFunc("/me", jwtAuth(authHandler.Me)).Methods(http.MethodGet)
 	}
 
 	corsHandler := cors.New(cors.Options{

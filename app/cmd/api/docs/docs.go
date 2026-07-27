@@ -637,10 +637,13 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
+                        "BasicAuth": []
+                    },
+                    {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Returns the authenticated user's ID and name. JWT only.",
+                "description": "Returns the authenticated user's ID and name.",
                 "produces": [
                     "application/json"
                 ],

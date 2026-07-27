@@ -1,11 +1,15 @@
 package main
 
 import (
+	"database/sql"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"testing"
 
 	"gkfeed/api/internal/config"
+	"gkfeed/api/internal/db"
 )
 
 func TestDeleteRouteDoesNotAllowGet(t *testing.T) {
@@ -16,5 +20,49 @@ func TestDeleteRouteDoesNotAllowGet(t *testing.T) {
 
 	if response.Code != http.StatusNotFound {
 		t.Fatalf("GET /api/v1/delete returned status %d; want %d", response.Code, http.StatusNotFound)
+	}
+}
+
+func TestMeRouteAcceptsBasicAuth(t *testing.T) {
+	databasePath := filepath.Join(t.TempDir(), "db.sqlite")
+	db.Configure(databasePath)
+	t.Cleanup(func() { db.Configure("") })
+
+	if err := db.RunMigrations(); err != nil {
+		t.Fatalf("RunMigrations() returned error: %v", err)
+	}
+
+	database, err := sql.Open("sqlite3", databasePath)
+	if err != nil {
+		t.Fatalf("open test database: %v", err)
+	}
+	defer database.Close()
+
+	if _, err := database.Exec(
+		"INSERT INTO users (id, name, password) VALUES (?, ?, ?)",
+		7, "reader", "secret",
+	); err != nil {
+		t.Fatalf("insert test user: %v", err)
+	}
+
+	request := httptest.NewRequest(http.MethodGet, "/auth/me", nil)
+	request.SetBasicAuth("reader", "secret")
+	response := httptest.NewRecorder()
+
+	newHandler(config.Config{}).ServeHTTP(response, request)
+
+	if response.Code != http.StatusOK {
+		t.Fatalf("GET /auth/me returned status %d; want %d", response.Code, http.StatusOK)
+	}
+
+	var user struct {
+		ID   int    `json:"id"`
+		Name string `json:"name"`
+	}
+	if err := json.NewDecoder(response.Body).Decode(&user); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if user.ID != 7 || user.Name != "reader" {
+		t.Fatalf("GET /auth/me returned %#v; want reader with ID 7", user)
 	}
 }

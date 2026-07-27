@@ -455,7 +455,7 @@ paths:
       - auth
   /auth/me:
     get:
-      description: Returns the authenticated user's ID and name. JWT only.
+      description: Returns the authenticated user's ID and name.
       produces:
       - application/json
       responses:
@@ -473,6 +473,7 @@ paths:
         "401":
           description: ""
       security:
+      - BasicAuth: []
       - BearerAuth: []
       summary: Current user
       tags:
