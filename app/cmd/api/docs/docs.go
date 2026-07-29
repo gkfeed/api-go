@@ -288,6 +288,29 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/feed_types": {
+            "get": {
+                "description": "Returns all feed type identifiers supported by the parser.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "feeds"
+                ],
+                "summary": "List feed types",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/get_items": {
             "get": {
                 "security": [

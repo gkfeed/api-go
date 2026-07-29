@@ -50,6 +50,7 @@ Docker Compose mounts `~/.local/share/gkfeed/data` at `/data` and configures the
 | Method | Route | Authentication | Purpose |
 | --- | --- | --- | --- |
 | `GET` | `/api/v1/list` | Basic | List the user's feeds |
+| `GET` | `/api/v1/feed_types` | None | List feed types supported by the parser |
 | `GET` | `/api/v1/feed` | Basic | Return the user's RSS feed |
 | `POST` | `/api/v1/add` | Basic | Add a feed |
 | `POST` | `/api/v1/add_lazy` | Basic | Add a feed inferred from its URL |
