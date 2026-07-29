@@ -67,6 +67,7 @@ func newHandler(configuration config.Config) http.Handler {
 
 	api := router.PathPrefix("/api/v1").Subrouter()
 	api.HandleFunc("/list", authenticate(handlers.HandleListOfFeeds)).Methods(http.MethodGet)
+	api.HandleFunc("/feed_types", handlers.HandleListFeedTypes).Methods(http.MethodGet)
 	api.HandleFunc("/feed", authenticate(handlers.HandleRSSFeed)).Methods(http.MethodGet)
 	api.HandleFunc("/add", authenticate(handlers.HandleAddFeed)).Methods(http.MethodPost)
 	api.HandleFunc("/delete", authenticate(handlers.HandleDeleteFeed)).Methods(http.MethodDelete)
