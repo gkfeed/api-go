@@ -244,6 +244,21 @@ paths:
       summary: Get RSS feed
       tags:
       - feeds
+  /api/v1/feed_types:
+    get:
+      description: Returns all feed type identifiers supported by the parser.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: string
+            type: array
+      summary: List feed types
+      tags:
+      - feeds
   /api/v1/get_items:
     get:
       description: Returns paginated items for the authenticated user. Supports cursor-based
