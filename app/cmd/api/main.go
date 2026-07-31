@@ -34,10 +34,13 @@ var testPasskeyHTML string
 // @name                       Authorization
 
 func main() {
-	configuration := config.Load()
+	configuration, err := config.Load()
+	if err != nil {
+		log.Fatalf("configuration: %v", err)
+	}
 	db.Configure(configuration.DatabasePath)
 
-	if err := db.RunMigrations(); err != nil {
+	if err = db.RunMigrations(); err != nil {
 		log.Fatalf("database migration: %v", err)
 	}
 

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -27,7 +28,7 @@ var defaultAllowedOrigins = []string{
 }
 
 const (
-	defaultJWTSecret         = "change-me-in-production"
+	minJWTSecretLength       = 32
 	defaultAccessTokenTTL    = 15 * time.Minute
 	defaultRefreshTokenTTL   = 720 * time.Hour
 	defaultWebAuthnRPDisplay = "GKFeed"
@@ -48,21 +49,30 @@ type Config struct {
 	WebAuthnRPDisplay string
 }
 
-func Load() Config {
+func Load() (Config, error) {
+	jwtSecret := strings.TrimSpace(os.Getenv(jwtSecretEnvironmentVariable))
+	if len(jwtSecret) < minJWTSecretLength {
+		return Config{}, fmt.Errorf(
+			"%s must be explicitly set to a cryptographically random value of at least %d bytes",
+			jwtSecretEnvironmentVariable,
+			minJWTSecretLength,
+		)
+	}
+
 	return Config{
 		Address:           valueOrDefault(addressEnvironmentVariable, ":8086"),
 		DatabasePath:      valueOrDefault(databaseEnvironmentVariable, filepath.Join("..", "data", "db.sqlite")),
 		AllowedOrigins:    allowedOrigins(),
 		ReadHeaderTimeout: 5 * time.Second,
 
-		JWTSecret:       valueOrDefault(jwtSecretEnvironmentVariable, defaultJWTSecret),
+		JWTSecret:       jwtSecret,
 		AccessTokenTTL:  durationOrDefault(jwtAccessTTLEnvironmentVariable, defaultAccessTokenTTL),
 		RefreshTokenTTL: durationOrDefault(jwtRefreshTTLEnvironmentVariable, defaultRefreshTokenTTL),
 
 		WebAuthnRPID:      os.Getenv(webauthnRPIDEnvironmentVariable),
 		WebAuthnRPOrigin:  os.Getenv(webauthnRPOriginEnvironmentVariable),
 		WebAuthnRPDisplay: valueOrDefault(webauthnRPDisplayEnvironmentVariable, defaultWebAuthnRPDisplay),
-	}
+	}, nil
 }
 
 func allowedOrigins() []string {
