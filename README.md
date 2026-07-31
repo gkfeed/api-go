@@ -37,6 +37,19 @@ Configuration is read from environment variables at startup:
 | `GKFEED_DB_PATH` | `../data/db.sqlite` | SQLite path relative to the `app` working directory |
 | `GKFEED_ALLOWED_ORIGINS` | Localhost development origins | Comma-separated CORS origins |
 | `GKFEED_JWT_SECRET` | none (required) | Cryptographically random JWT signing secret of at least 32 bytes |
+| `GKFEED_JWT_ACCESS_TTL` | `15m` | Lifetime of access tokens |
+| `GKFEED_JWT_REFRESH_TTL` | `720h` | Lifetime of refresh tokens |
+| `GKFEED_WEBAUTHN_RP_ID` | none outside Docker; `localhost` in Compose | WebAuthn relying-party ID, normally the hostname without scheme or port |
+| `GKFEED_WEBAUTHN_RP_ORIGIN` | none outside Docker; `http://localhost:8086` in Compose | Exact browser origin used by the passkey client |
+| `GKFEED_WEBAUTHN_RP_DISPLAY` | `GKFeed` | Human-readable WebAuthn relying-party name |
+
+WebAuthn is disabled with a startup warning when either RP variable is missing or invalid; the feed API remains available. For a non-local deployment, set both variables to match the public hostname and origin. For example:
+
+```sh
+export GKFEED_JWT_SECRET="$(openssl rand -base64 32)"
+export GKFEED_WEBAUTHN_RP_ID="feeds.example.com"
+export GKFEED_WEBAUTHN_RP_ORIGIN="https://feeds.example.com"
+```
 
 ## Docker
 

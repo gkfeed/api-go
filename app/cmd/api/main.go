@@ -91,6 +91,8 @@ func newHandler(configuration config.Config) http.Handler {
 		authRouter.HandleFunc("/logout", authenticate(authHandler.Logout)).Methods(http.MethodPost)
 		authRouter.HandleFunc("/credentials", authenticate(authHandler.ListCredentials)).Methods(http.MethodGet)
 		authRouter.HandleFunc("/credentials/{id}", authenticate(authHandler.DeleteCredential)).Methods(http.MethodDelete)
+	} else {
+		log.Printf("WARNING: WebAuthn disabled: %v; set GKFEED_WEBAUTHN_RP_ID and GKFEED_WEBAUTHN_RP_ORIGIN to enable passkeys", err)
 	}
 
 	corsHandler := cors.New(cors.Options{
