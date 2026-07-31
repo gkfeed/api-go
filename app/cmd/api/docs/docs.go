@@ -364,7 +364,15 @@ const docTemplate = `{
         },
         "/api/v1/item": {
             "get": {
-                "description": "Returns a single item with its parent feed. No authentication required.",
+                "security": [
+                    {
+                        "BasicAuth": []
+                    },
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns a single item with its parent feed for the authenticated user.",
                 "produces": [
                     "application/json"
                 ],
@@ -404,6 +412,9 @@ const docTemplate = `{
                         }
                     },
                     "400": {
+                        "description": ""
+                    },
+                    "401": {
                         "description": ""
                     },
                     "404": {

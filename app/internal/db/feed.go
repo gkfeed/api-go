@@ -6,7 +6,7 @@ import (
 	"gkfeed/api/internal/models"
 )
 
-const feedColumns = "id, title, url, type, user_id"
+const feedColumns = "feed.id, feed.title, feed.url, feed.type, feed.user_id"
 
 func GetUserFeeds(userID int) ([]models.Feed, error) {
 	return getFeeds("SELECT "+feedColumns+" FROM feed WHERE user_id = ?", userID)

@@ -68,6 +68,73 @@ func TestMeRouteAcceptsBasicAuth(t *testing.T) {
 	}
 }
 
+func TestItemRouteRequiresAuthenticationAndOwner(t *testing.T) {
+	databasePath := filepath.Join(t.TempDir(), "db.sqlite")
+	db.Configure(databasePath)
+	t.Cleanup(func() { db.Configure("") })
+
+	if err := db.RunMigrations(); err != nil {
+		t.Fatalf("RunMigrations() returned error: %v", err)
+	}
+
+	database, err := sql.Open("sqlite3", databasePath)
+	if err != nil {
+		t.Fatalf("open test database: %v", err)
+	}
+	defer database.Close()
+
+	for _, user := range []struct {
+		id       int
+		name     string
+		password string
+	}{
+		{1, "owner", "owner-password"},
+		{2, "other", "other-password"},
+	} {
+		if _, err := database.Exec("INSERT INTO users (id, name, password) VALUES (?, ?, ?)", user.id, user.name, user.password); err != nil {
+			t.Fatalf("insert test user %d: %v", user.id, err)
+		}
+	}
+	if _, err := database.Exec(
+		"INSERT INTO feed (id, title, url, type, user_id) VALUES (?, ?, ?, ?, ?)",
+		11, "Owner feed", "https://example.com/feed", "web", 1,
+	); err != nil {
+		t.Fatalf("insert test feed: %v", err)
+	}
+	if _, err := database.Exec(
+		"INSERT INTO item (id, feed_id, title, text, date, link) VALUES (?, ?, ?, ?, ?, ?)",
+		22, 11, "Owner item", "private", "2026-01-01T00:00:00Z", "https://example.com/item",
+	); err != nil {
+		t.Fatalf("insert test item: %v", err)
+	}
+
+	tests := []struct {
+		name       string
+		username   string
+		password   string
+		wantStatus int
+	}{
+		{name: "requires authentication", wantStatus: http.StatusUnauthorized},
+		{name: "allows owner", username: "owner", password: "owner-password", wantStatus: http.StatusOK},
+		{name: "rejects another user", username: "other", password: "other-password", wantStatus: http.StatusNotFound},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodGet, "/api/v1/item?id=22", nil)
+			if test.username != "" {
+				request.SetBasicAuth(test.username, test.password)
+			}
+			response := httptest.NewRecorder()
+
+			newHandler(config.Config{}).ServeHTTP(response, request)
+
+			if response.Code != test.wantStatus {
+				t.Fatalf("GET /api/v1/item returned status %d; want %d", response.Code, test.wantStatus)
+			}
+		})
+	}
+}
+
 func TestFeedTypesRouteIsPublic(t *testing.T) {
 	request := httptest.NewRequest(http.MethodGet, "/api/v1/feed_types", nil)
 	response := httptest.NewRecorder()

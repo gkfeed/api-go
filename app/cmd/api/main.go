@@ -74,7 +74,7 @@ func newHandler(configuration config.Config) http.Handler {
 	api.HandleFunc("/delete", authenticate(handlers.HandleDeleteFeed)).Methods(http.MethodDelete)
 	api.HandleFunc("/add_lazy", authenticate(handlers.HandleAddFeedLazy)).Methods(http.MethodPost)
 	api.HandleFunc("/add_deleted_items", authenticate(handlers.HandleAddDeletedItems)).Methods(http.MethodPost)
-	api.HandleFunc("/item", handlers.HandleGetItemByID).Methods(http.MethodGet)
+	api.HandleFunc("/item", authenticate(handlers.HandleGetItemByID)).Methods(http.MethodGet)
 	api.HandleFunc("/get_items", authenticate(handlers.HandleGetItems)).Methods(http.MethodGet)
 
 	authRouter := api.PathPrefix("/auth").Subrouter()
