@@ -1,12 +1,12 @@
 package auth
 
 import (
-	"crypto/subtle"
 	"database/sql"
 	"errors"
 
 	"gkfeed/api/internal/db"
 	"gkfeed/api/internal/models"
+	"gkfeed/api/internal/passwordhash"
 )
 
 var getUser = db.GetUserFromDB
@@ -20,7 +20,7 @@ func authenticateWithDB(username, password string) (models.User, bool, error) {
 		return models.User{}, false, err
 	}
 
-	authenticated := subtle.ConstantTimeCompare([]byte(user.HashedPassword), []byte(password)) == 1
+	authenticated := passwordhash.ComparePassword(user.HashedPassword, password)
 	return user, authenticated, nil
 }
 

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"gkfeed/api/internal/models"
+	"gkfeed/api/internal/passwordhash"
 )
 
 func TestFeedAndItemQueries(t *testing.T) {
@@ -77,6 +78,84 @@ func TestFeedAndItemQueries(t *testing.T) {
 
 	if _, _, err := GetUserItemByID(2, remaining[0].ID); !errors.Is(err, sql.ErrNoRows) {
 		t.Fatalf("GetUserItemByID() for another user returned error %v, want sql.ErrNoRows", err)
+	}
+}
+
+func TestMigratePasswords(t *testing.T) {
+	useTestDatabase(t)
+
+	if err := RunMigrations(); err != nil {
+		t.Fatalf("RunMigrations() returned error: %v", err)
+	}
+
+	user, err := GetUserFromDB("reader")
+	if err != nil {
+		t.Fatalf("GetUserFromDB() returned error: %v", err)
+	}
+	if user.HashedPassword == "secret" {
+		t.Fatal("MigratePasswords() left the plaintext password in the database")
+	}
+	if !passwordhash.ComparePassword(user.HashedPassword, "secret") {
+		t.Fatal("MigratePasswords() stored a hash that does not match the password")
+	}
+
+	database, err := getDB()
+	if err != nil {
+		t.Fatalf("open test database: %v", err)
+	}
+	var hashBeforeSecondMigration string
+	if err := database.QueryRow("SELECT password FROM users WHERE id = 1").Scan(&hashBeforeSecondMigration); err != nil {
+		database.Close()
+		t.Fatalf("read migrated password: %v", err)
+	}
+	database.Close()
+
+	if err := RunMigrations(); err != nil {
+		t.Fatalf("second RunMigrations() returned error: %v", err)
+	}
+
+	database, err = getDB()
+	if err != nil {
+		t.Fatalf("reopen test database: %v", err)
+	}
+	defer database.Close()
+	var hashAfterSecondMigration string
+	if err := database.QueryRow("SELECT password FROM users WHERE id = 1").Scan(&hashAfterSecondMigration); err != nil {
+		t.Fatalf("read password after second migration: %v", err)
+	}
+	if hashAfterSecondMigration != hashBeforeSecondMigration {
+		t.Fatal("MigratePasswords() rehashed an already migrated password")
+	}
+}
+
+func TestMigratePasswordsLeavesNullPasswordsAlone(t *testing.T) {
+	useTestDatabase(t)
+
+	database, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		t.Fatalf("open test database: %v", err)
+	}
+	_, err = database.Exec("INSERT INTO users (id, name, password) VALUES (?, ?, NULL)", 2, "no-password")
+	database.Close()
+	if err != nil {
+		t.Fatalf("insert null password: %v", err)
+	}
+
+	if err := RunMigrations(); err != nil {
+		t.Fatalf("RunMigrations() returned error: %v", err)
+	}
+
+	database, err = sql.Open("sqlite3", dbPath)
+	if err != nil {
+		t.Fatalf("reopen test database: %v", err)
+	}
+	defer database.Close()
+	var password sql.NullString
+	if err := database.QueryRow("SELECT password FROM users WHERE id = 2").Scan(&password); err != nil {
+		t.Fatalf("read null password: %v", err)
+	}
+	if password.Valid {
+		t.Fatalf("MigratePasswords() changed a NULL password to %q", password.String)
 	}
 }
 

@@ -45,6 +45,9 @@ func TestMeRouteAcceptsBasicAuth(t *testing.T) {
 	); err != nil {
 		t.Fatalf("insert test user: %v", err)
 	}
+	if err := db.RunMigrations(); err != nil {
+		t.Fatalf("RunMigrations() after legacy user insert returned error: %v", err)
+	}
 
 	request := httptest.NewRequest(http.MethodGet, "/api/v1/auth/me", nil)
 	request.SetBasicAuth("reader", "secret")
@@ -94,6 +97,9 @@ func TestItemRouteRequiresAuthenticationAndOwner(t *testing.T) {
 		if _, err := database.Exec("INSERT INTO users (id, name, password) VALUES (?, ?, ?)", user.id, user.name, user.password); err != nil {
 			t.Fatalf("insert test user %d: %v", user.id, err)
 		}
+	}
+	if err := db.RunMigrations(); err != nil {
+		t.Fatalf("RunMigrations() after legacy user inserts returned error: %v", err)
 	}
 	if _, err := database.Exec(
 		"INSERT INTO feed (id, title, url, type, user_id) VALUES (?, ?, ?, ?, ?)",

@@ -17,6 +17,9 @@ func RunMigrations() error {
 	if err := InitCoreSchema(); err != nil {
 		return err
 	}
+	if err := MigratePasswords(); err != nil {
+		return err
+	}
 	if err := InitWebAuthnSchema(); err != nil {
 		return err
 	}
