@@ -16,7 +16,7 @@ The default development configuration expects the database at `data/db.sqlite` f
 make dev
 ```
 
-The API listens on <http://localhost:8086>. Most routes require HTTP Basic authentication using credentials stored in the `users` table.
+The API listens on <http://localhost:8086>. Most routes require HTTP Basic authentication using credentials stored in the `users` table. The `password` column stores PHC-formatted Argon2id hashes; plaintext passwords from an existing database are converted automatically during startup migration.
 
 Run the local quality checks with:
 

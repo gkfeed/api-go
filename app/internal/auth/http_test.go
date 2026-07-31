@@ -10,11 +10,13 @@ import (
 
 	"gkfeed/api/internal/config"
 	"gkfeed/api/internal/models"
+	"gkfeed/api/internal/passwordhash"
 )
 
 func TestBasicAuthProvidesAuthenticatedUser(t *testing.T) {
+	hash := testPasswordHash(t, "secret")
 	replaceUserLookup(t, func(name string) (models.User, error) {
-		return models.User{ID: 7, Name: name, HashedPassword: "secret"}, nil
+		return models.User{ID: 7, Name: name, HashedPassword: hash}, nil
 	})
 
 	var receivedUser models.User
@@ -37,8 +39,9 @@ func TestBasicAuthProvidesAuthenticatedUser(t *testing.T) {
 }
 
 func TestBasicAuthRejectsInvalidPassword(t *testing.T) {
+	hash := testPasswordHash(t, "secret")
 	replaceUserLookup(t, func(name string) (models.User, error) {
-		return models.User{Name: name, HashedPassword: "secret"}, nil
+		return models.User{Name: name, HashedPassword: hash}, nil
 	})
 
 	handler := BasicAuth(func(http.ResponseWriter, *http.Request) {
@@ -106,8 +109,9 @@ func TestAuthenticateJWT(t *testing.T) {
 }
 
 func TestAuthenticateFallsBackToBasicAuth(t *testing.T) {
+	hash := testPasswordHash(t, "secret")
 	replaceUserLookup(t, func(name string) (models.User, error) {
-		return models.User{ID: 99, Name: name, HashedPassword: "secret"}, nil
+		return models.User{ID: 99, Name: name, HashedPassword: hash}, nil
 	})
 
 	cfg := config.Config{JWTSecret: "test-secret"}
@@ -297,4 +301,13 @@ func replaceUserLookup(t *testing.T, lookup func(string) (models.User, error)) {
 	original := getUser
 	getUser = lookup
 	t.Cleanup(func() { getUser = original })
+}
+
+func testPasswordHash(t *testing.T, password string) string {
+	t.Helper()
+	hash, err := passwordhash.HashPassword(password)
+	if err != nil {
+		t.Fatalf("HashPassword() returned error: %v", err)
+	}
+	return hash
 }

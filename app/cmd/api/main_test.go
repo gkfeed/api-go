@@ -45,6 +45,9 @@ func TestMeRouteAcceptsBasicAuth(t *testing.T) {
 	); err != nil {
 		t.Fatalf("insert test user: %v", err)
 	}
+	if err := db.RunMigrations(); err != nil {
+		t.Fatalf("RunMigrations() after legacy user insert returned error: %v", err)
+	}
 
 	request := httptest.NewRequest(http.MethodGet, "/api/v1/auth/me", nil)
 	request.SetBasicAuth("reader", "secret")
