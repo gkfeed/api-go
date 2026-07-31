@@ -21,7 +21,7 @@ func MigratePasswords() error {
 	}
 	defer transaction.Rollback()
 
-	rows, err := transaction.Query("SELECT id, password FROM users WHERE password IS NOT NULL")
+	rows, err := transaction.Query("SELECT id, hashed_password FROM users WHERE hashed_password IS NOT NULL")
 	if err != nil {
 		return fmt.Errorf("read passwords: %w", err)
 	}
@@ -55,7 +55,7 @@ func MigratePasswords() error {
 			return fmt.Errorf("hash password for user %d: %w", legacy.id, err)
 		}
 		if _, err := transaction.Exec(
-			"UPDATE users SET password = ? WHERE id = ?",
+			"UPDATE users SET hashed_password = ? WHERE id = ?",
 			hashed,
 			legacy.id,
 		); err != nil {

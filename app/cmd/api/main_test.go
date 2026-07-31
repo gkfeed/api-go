@@ -40,7 +40,7 @@ func TestMeRouteAcceptsBasicAuth(t *testing.T) {
 	defer database.Close()
 
 	if _, err := database.Exec(
-		"INSERT INTO users (id, name, password) VALUES (?, ?, ?)",
+		"INSERT INTO users (id, name, hashed_password) VALUES (?, ?, ?)",
 		7, "reader", "secret",
 	); err != nil {
 		t.Fatalf("insert test user: %v", err)
@@ -94,7 +94,7 @@ func TestItemRouteRequiresAuthenticationAndOwner(t *testing.T) {
 		{1, "owner", "owner-password"},
 		{2, "other", "other-password"},
 	} {
-		if _, err := database.Exec("INSERT INTO users (id, name, password) VALUES (?, ?, ?)", user.id, user.name, user.password); err != nil {
+		if _, err := database.Exec("INSERT INTO users (id, name, hashed_password) VALUES (?, ?, ?)", user.id, user.name, user.password); err != nil {
 			t.Fatalf("insert test user %d: %v", user.id, err)
 		}
 	}

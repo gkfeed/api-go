@@ -104,7 +104,7 @@ func TestMigratePasswords(t *testing.T) {
 		t.Fatalf("open test database: %v", err)
 	}
 	var hashBeforeSecondMigration string
-	if err := database.QueryRow("SELECT password FROM users WHERE id = 1").Scan(&hashBeforeSecondMigration); err != nil {
+	if err := database.QueryRow("SELECT hashed_password FROM users WHERE id = 1").Scan(&hashBeforeSecondMigration); err != nil {
 		database.Close()
 		t.Fatalf("read migrated password: %v", err)
 	}
@@ -120,7 +120,7 @@ func TestMigratePasswords(t *testing.T) {
 	}
 	defer database.Close()
 	var hashAfterSecondMigration string
-	if err := database.QueryRow("SELECT password FROM users WHERE id = 1").Scan(&hashAfterSecondMigration); err != nil {
+	if err := database.QueryRow("SELECT hashed_password FROM users WHERE id = 1").Scan(&hashAfterSecondMigration); err != nil {
 		t.Fatalf("read password after second migration: %v", err)
 	}
 	if hashAfterSecondMigration != hashBeforeSecondMigration {
@@ -135,7 +135,7 @@ func TestMigratePasswordsLeavesNullPasswordsAlone(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open test database: %v", err)
 	}
-	_, err = database.Exec("INSERT INTO users (id, name, password) VALUES (?, ?, NULL)", 2, "no-password")
+	_, err = database.Exec("INSERT INTO users (id, name, hashed_password) VALUES (?, ?, NULL)", 2, "no-password")
 	database.Close()
 	if err != nil {
 		t.Fatalf("insert null password: %v", err)
@@ -151,7 +151,7 @@ func TestMigratePasswordsLeavesNullPasswordsAlone(t *testing.T) {
 	}
 	defer database.Close()
 	var password sql.NullString
-	if err := database.QueryRow("SELECT password FROM users WHERE id = 2").Scan(&password); err != nil {
+	if err := database.QueryRow("SELECT hashed_password FROM users WHERE id = 2").Scan(&password); err != nil {
 		t.Fatalf("read null password: %v", err)
 	}
 	if password.Valid {
@@ -173,13 +173,13 @@ func useTestDatabase(t *testing.T) {
 	t.Cleanup(func() { database.Close() })
 
 	schema := []string{
-		"CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, password TEXT)",
+		"CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, hashed_password TEXT)",
 		"CREATE TABLE feed (id INTEGER PRIMARY KEY, title TEXT, url TEXT, type TEXT, user_id INTEGER)",
 		"CREATE TABLE item (id INTEGER PRIMARY KEY, feed_id INTEGER, title TEXT, text TEXT, date DATETIME, link TEXT)",
 		"CREATE TABLE deleted_items (user_id INTEGER, item_id INTEGER)",
 		"CREATE TABLE webauthn_credentials (id BLOB PRIMARY KEY, user_id INTEGER NOT NULL, credential TEXT NOT NULL, name TEXT NOT NULL DEFAULT '', created_at DATETIME DEFAULT CURRENT_TIMESTAMP, last_used_at DATETIME)",
 		"CREATE TABLE refresh_tokens (id TEXT PRIMARY KEY, user_id INTEGER NOT NULL, expires_at DATETIME NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)",
-		"INSERT INTO users (id, name, password) VALUES (1, 'reader', 'secret')",
+		"INSERT INTO users (id, name, hashed_password) VALUES (1, 'reader', 'secret')",
 	}
 	for _, statement := range schema {
 		if _, err := database.Exec(statement); err != nil {

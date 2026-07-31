@@ -39,7 +39,7 @@ func GetUserFromDBByID(id int) (models.User, error) {
 
 	var user models.User
 	err = database.QueryRow(
-		"SELECT id, name, password FROM users WHERE id = ?",
+		"SELECT id, name, hashed_password FROM users WHERE id = ?",
 		id,
 	).Scan(&user.ID, &user.Name, &user.HashedPassword)
 	if errors.Is(err, sql.ErrNoRows) {

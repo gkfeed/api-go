@@ -37,7 +37,7 @@ func InitCoreSchema() error {
 	defer database.Close()
 
 	schema := []string{
-		"CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT, password TEXT)",
+		"CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT, hashed_password TEXT)",
 		"CREATE TABLE IF NOT EXISTS feed (id INTEGER PRIMARY KEY, title TEXT, url TEXT, type TEXT, user_id INTEGER)",
 		"CREATE TABLE IF NOT EXISTS item (id INTEGER PRIMARY KEY, feed_id INTEGER, title TEXT, text TEXT, date DATETIME, link TEXT)",
 		"CREATE TABLE IF NOT EXISTS deleted_items (user_id INTEGER, item_id INTEGER)",
