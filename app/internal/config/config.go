@@ -29,8 +29,8 @@ var defaultAllowedOrigins = []string{
 
 const (
 	minJWTSecretLength       = 32
-	defaultAccessTokenTTL    = 15 * time.Minute
-	defaultRefreshTokenTTL   = 720 * time.Hour
+	defaultAccessTokenTTL    = 30 * time.Minute
+	defaultRefreshTokenTTL   = 90 * 24 * time.Hour
 	defaultWebAuthnRPDisplay = "GKFeed"
 )
 

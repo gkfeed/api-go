@@ -11,8 +11,20 @@ import (
 )
 
 func Authenticate(cfg config.Config) func(http.HandlerFunc) http.HandlerFunc {
+	return AuthenticateWithSessions(cfg, nil)
+}
+
+func AuthenticateWithSessions(cfg config.Config, sessions *SessionStore) func(http.HandlerFunc) http.HandlerFunc {
 	return func(handler http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
+			if sessions != nil {
+				if session, ok := sessions.Get(bearerToken(r)); ok {
+					log.Printf("auth: authenticated via access token user=%s id=%d", session.User.Name, session.User.ID)
+					handler(w, r.WithContext(WithUser(r.Context(), session.User)))
+					return
+				}
+			}
+
 			if user, ok := tryJWT(r, cfg); ok {
 				log.Printf("auth: authenticated via JWT user=%s id=%d", user.Name, user.ID)
 				handler(w, r.WithContext(WithUser(r.Context(), user)))
@@ -35,15 +47,27 @@ func Authenticate(cfg config.Config) func(http.HandlerFunc) http.HandlerFunc {
 				log.Printf("auth: basic auth failed (wrong password) for user=%q", username)
 			}
 
-			if authHeader := r.Header.Get("Authorization"); authHeader != "" {
+			if r.Header.Get("Authorization") != "" {
 				log.Printf("auth: rejecting request, Authorization header provided, parsed basic=%v", ok)
 			} else {
 				log.Printf("auth: rejecting request, no Authorization header")
 			}
-			w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
+			if sessions != nil {
+				w.Header().Set("WWW-Authenticate", "Bearer")
+			} else {
+				w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
+			}
 			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		}
 	}
+}
+
+func bearerToken(r *http.Request) string {
+	token, ok := parseBearerToken(r.Header.Get("Authorization"))
+	if !ok {
+		return ""
+	}
+	return token
 }
 
 func JWTAuth(cfg config.Config) func(http.HandlerFunc) http.HandlerFunc {

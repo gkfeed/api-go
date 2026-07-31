@@ -46,7 +46,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/gkfeed_api_internal_handlers.feedMutationResponse"
+                            "$ref": "#/definitions/handlers.feedMutationResponse"
                         }
                     },
                     "400": {
@@ -172,7 +172,493 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_handlers.feedMutationResponse"
+                            "$ref": "#/definitions/handlers.feedMutationResponse"
+                        }
+                    },
+                    "400": {
+                        "description": ""
+                    },
+                    "401": {
+                        "description": ""
+                    },
+                    "500": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/credentials": {
+            "get": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    },
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns all registered passkeys for the authenticated user.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "List passkeys",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "allOf": [
+                                    {
+                                        "type": "object"
+                                    },
+                                    {
+                                        "type": "object",
+                                        "properties": {
+                                            "created_at": {
+                                                "type": "string"
+                                            },
+                                            "id": {
+                                                "type": "string"
+                                            },
+                                            "last_used_at": {
+                                                "type": "string"
+                                            },
+                                            "name": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": ""
+                    },
+                    "500": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/credentials/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    },
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Removes a specific passkey credential for the authenticated user.",
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Delete passkey",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Credential ID (base64url)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": ""
+                    },
+                    "400": {
+                        "description": ""
+                    },
+                    "401": {
+                        "description": ""
+                    },
+                    "404": {
+                        "description": ""
+                    },
+                    "500": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/login": {
+            "post": {
+                "description": "Exchanges username and password for a short-lived access token and a rotating refresh token.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Login with a password",
+                "parameters": [
+                    {
+                        "description": "Credentials",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.loginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.tokenResponse"
+                        }
+                    },
+                    "400": {
+                        "description": ""
+                    },
+                    "401": {
+                        "description": ""
+                    },
+                    "500": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/login/begin": {
+            "post": {
+                "description": "Starts discoverable WebAuthn login, returns assertion options for the browser.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Begin passkey login",
+                "responses": {
+                    "200": {
+                        "description": ""
+                    },
+                    "500": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/login/finish": {
+            "post": {
+                "description": "Completes WebAuthn authentication, returns an access/refresh token pair.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Finish passkey login",
+                "parameters": [
+                    {
+                        "description": "WebAuthn assertion response",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "type": "object"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "access_token": {
+                                            "type": "string"
+                                        },
+                                        "credential_id": {
+                                            "type": "string"
+                                        },
+                                        "refresh_token": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": ""
+                    },
+                    "500": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/logout": {
+            "post": {
+                "description": "Revokes the refresh-token family associated with the supplied token.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Logout",
+                "parameters": [
+                    {
+                        "description": "Refresh token",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.refreshRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": ""
+                    },
+                    "400": {
+                        "description": ""
+                    },
+                    "500": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/logout-all": {
+            "post": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    },
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Revokes every refresh token and access session for the authenticated user.",
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Logout all sessions",
+                "responses": {
+                    "204": {
+                        "description": ""
+                    },
+                    "401": {
+                        "description": ""
+                    },
+                    "500": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/me": {
+            "get": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    },
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns the authenticated user's ID and name.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Current user",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "type": "object"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "id": {
+                                            "type": "integer"
+                                        },
+                                        "name": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/refresh": {
+            "post": {
+                "description": "Rotates a refresh token and returns a new access/refresh token pair.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Refresh access token",
+                "parameters": [
+                    {
+                        "description": "Refresh token",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.refreshRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.tokenResponse"
+                        }
+                    },
+                    "400": {
+                        "description": ""
+                    },
+                    "401": {
+                        "description": ""
+                    },
+                    "500": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/register/begin": {
+            "post": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    },
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Starts WebAuthn registration, returns creation options for the browser.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Begin passkey registration",
+                "parameters": [
+                    {
+                        "description": "Optional name for the passkey",
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.registerBeginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    },
+                    "401": {
+                        "description": ""
+                    },
+                    "500": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/register/finish": {
+            "post": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    },
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Completes WebAuthn registration with the attestation response from the browser.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Finish passkey registration",
+                "parameters": [
+                    {
+                        "description": "WebAuthn attestation response",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "type": "object"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "id": {
+                                            "type": "string"
+                                        },
+                                        "name": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
@@ -338,7 +824,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_handlers.getItemsResponse"
+                            "$ref": "#/definitions/handlers.getItemsResponse"
                         }
                     },
                     "400": {
@@ -450,431 +936,10 @@
                     }
                 }
             }
-        },
-        "/api/v1/auth/credentials": {
-            "get": {
-                "security": [
-                    {
-                        "BasicAuth": []
-                    },
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Returns all registered passkeys for the authenticated user.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "auth"
-                ],
-                "summary": "List passkeys",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "allOf": [
-                                    {
-                                        "type": "object"
-                                    },
-                                    {
-                                        "type": "object",
-                                        "properties": {
-                                            "created_at": {
-                                                "type": "string"
-                                            },
-                                            "id": {
-                                                "type": "string"
-                                            },
-                                            "last_used_at": {
-                                                "type": "string"
-                                            },
-                                            "name": {
-                                                "type": "string"
-                                            }
-                                        }
-                                    }
-                                ]
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": ""
-                    },
-                    "500": {
-                        "description": ""
-                    }
-                }
-            }
-        },
-        "/api/v1/auth/credentials/{id}": {
-            "delete": {
-                "security": [
-                    {
-                        "BasicAuth": []
-                    },
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Removes a specific passkey credential for the authenticated user.",
-                "tags": [
-                    "auth"
-                ],
-                "summary": "Delete passkey",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Credential ID (base64url)",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": ""
-                    },
-                    "400": {
-                        "description": ""
-                    },
-                    "401": {
-                        "description": ""
-                    },
-                    "404": {
-                        "description": ""
-                    },
-                    "500": {
-                        "description": ""
-                    }
-                }
-            }
-        },
-        "/api/v1/auth/login/begin": {
-            "post": {
-                "description": "Starts discoverable WebAuthn login, returns assertion options for the browser.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "auth"
-                ],
-                "summary": "Begin passkey login",
-                "responses": {
-                    "200": {
-                        "description": ""
-                    },
-                    "500": {
-                        "description": ""
-                    }
-                }
-            }
-        },
-        "/api/v1/auth/login/finish": {
-            "post": {
-                "description": "Completes WebAuthn authentication, returns a JWT access/refresh token pair.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "auth"
-                ],
-                "summary": "Finish passkey login",
-                "parameters": [
-                    {
-                        "description": "WebAuthn assertion response",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "object"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "type": "object"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "access_token": {
-                                            "type": "string"
-                                        },
-                                        "credential_id": {
-                                            "type": "string"
-                                        },
-                                        "refresh_token": {
-                                            "type": "string"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": ""
-                    },
-                    "500": {
-                        "description": ""
-                    }
-                }
-            }
-        },
-        "/api/v1/auth/logout": {
-            "post": {
-                "security": [
-                    {
-                        "BasicAuth": []
-                    },
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Invalidates all refresh tokens for the authenticated user.",
-                "tags": [
-                    "auth"
-                ],
-                "summary": "Logout",
-                "responses": {
-                    "204": {
-                        "description": ""
-                    },
-                    "401": {
-                        "description": ""
-                    },
-                    "500": {
-                        "description": ""
-                    }
-                }
-            }
-        },
-        "/api/v1/auth/me": {
-            "get": {
-                "security": [
-                    {
-                        "BasicAuth": []
-                    },
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Returns the authenticated user's ID and name.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "auth"
-                ],
-                "summary": "Current user",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "type": "object"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "id": {
-                                            "type": "integer"
-                                        },
-                                        "name": {
-                                            "type": "string"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "401": {
-                        "description": ""
-                    }
-                }
-            }
-        },
-        "/api/v1/auth/refresh": {
-            "post": {
-                "description": "Exchanges a valid refresh token for a new access/refresh token pair. Old refresh token is invalidated.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "auth"
-                ],
-                "summary": "Refresh access token",
-                "parameters": [
-                    {
-                        "description": "Refresh token",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_handlers.refreshRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "type": "object"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "access_token": {
-                                            "type": "string"
-                                        },
-                                        "refresh_token": {
-                                            "type": "string"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": ""
-                    },
-                    "401": {
-                        "description": ""
-                    },
-                    "500": {
-                        "description": ""
-                    }
-                }
-            }
-        },
-        "/api/v1/auth/register/begin": {
-            "post": {
-                "security": [
-                    {
-                        "BasicAuth": []
-                    },
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Starts WebAuthn registration, returns creation options for the browser.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "auth"
-                ],
-                "summary": "Begin passkey registration",
-                "parameters": [
-                    {
-                        "description": "Optional name for the passkey",
-                        "name": "body",
-                        "in": "body",
-                        "schema": {
-                            "$ref": "#/definitions/internal_handlers.registerBeginRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": ""
-                    },
-                    "401": {
-                        "description": ""
-                    },
-                    "500": {
-                        "description": ""
-                    }
-                }
-            }
-        },
-        "/api/v1/auth/register/finish": {
-            "post": {
-                "security": [
-                    {
-                        "BasicAuth": []
-                    },
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Completes WebAuthn registration with the attestation response from the browser.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "auth"
-                ],
-                "summary": "Finish passkey registration",
-                "parameters": [
-                    {
-                        "description": "WebAuthn attestation response",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "object"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "type": "object"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "id": {
-                                            "type": "string"
-                                        },
-                                        "name": {
-                                            "type": "string"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": ""
-                    },
-                    "401": {
-                        "description": ""
-                    },
-                    "500": {
-                        "description": ""
-                    }
-                }
-            }
         }
     },
     "definitions": {
-        "gkfeed_api_internal_handlers.feedMutationResponse": {
+        "handlers.feedMutationResponse": {
             "type": "object",
             "properties": {
                 "created": {
@@ -885,7 +950,7 @@
                 }
             }
         },
-        "gkfeed_api_internal_handlers.getItemsResponse": {
+        "handlers.getItemsResponse": {
             "type": "object",
             "properties": {
                 "items": {
@@ -899,7 +964,18 @@
                 }
             }
         },
-        "gkfeed_api_internal_handlers.refreshRequest": {
+        "handlers.loginRequest": {
+            "type": "object",
+            "properties": {
+                "password": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.refreshRequest": {
             "type": "object",
             "properties": {
                 "refresh_token": {
@@ -907,7 +983,7 @@
                 }
             }
         },
-        "gkfeed_api_internal_handlers.registerBeginRequest": {
+        "handlers.registerBeginRequest": {
             "type": "object",
             "properties": {
                 "name": {
@@ -915,43 +991,22 @@
                 }
             }
         },
-        "internal_handlers.feedMutationResponse": {
+        "handlers.tokenResponse": {
             "type": "object",
             "properties": {
-                "created": {
-                    "type": "boolean"
+                "access_token": {
+                    "type": "string"
                 },
-                "item": {
-                    "$ref": "#/definitions/models.Feed"
-                }
-            }
-        },
-        "internal_handlers.getItemsResponse": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.Item"
-                    }
-                },
-                "next_cursor": {
+                "expires_in": {
                     "type": "integer"
-                }
-            }
-        },
-        "internal_handlers.refreshRequest": {
-            "type": "object",
-            "properties": {
+                },
+                "refresh_expires_in": {
+                    "type": "integer"
+                },
                 "refresh_token": {
                     "type": "string"
-                }
-            }
-        },
-        "internal_handlers.registerBeginRequest": {
-            "type": "object",
-            "properties": {
-                "name": {
+                },
+                "token_type": {
                     "type": "string"
                 }
             }
