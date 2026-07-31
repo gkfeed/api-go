@@ -1,10 +1,13 @@
 package auth
 
 import (
+	"bytes"
 	"errors"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -187,6 +190,40 @@ func TestAuthenticateRejectsWithoutCredentials(t *testing.T) {
 
 	if response.Code != http.StatusUnauthorized {
 		t.Fatalf("status = %d, want %d", response.Code, http.StatusUnauthorized)
+	}
+}
+
+func TestAuthenticateDoesNotLogAuthorizationHeader(t *testing.T) {
+	replaceUserLookup(t, func(name string) (models.User, error) {
+		return models.User{Name: name, HashedPassword: "secret"}, nil
+	})
+
+	var logs bytes.Buffer
+	previousOutput := log.Writer()
+	log.SetOutput(&logs)
+	t.Cleanup(func() {
+		log.SetOutput(previousOutput)
+	})
+
+	handler := Authenticate(config.Config{JWTSecret: "test-secret"})(func(http.ResponseWriter, *http.Request) {
+		t.Fatal("protected handler was called")
+	})
+	request := httptest.NewRequest(http.MethodGet, "/", nil)
+	request.SetBasicAuth("reader", "a-very-long-password-that-must-not-be-logged")
+	authHeader := request.Header.Get("Authorization")
+	response := httptest.NewRecorder()
+
+	handler(response, request)
+
+	if response.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want %d", response.Code, http.StatusUnauthorized)
+	}
+	output := logs.String()
+	if strings.Contains(output, authHeader) {
+		t.Fatalf("log output contains Authorization header: %q", output)
+	}
+	if strings.Contains(output, authHeader[:min(len(authHeader), 30)]) {
+		t.Fatalf("log output contains part of Authorization header: %q", output)
 	}
 }
 

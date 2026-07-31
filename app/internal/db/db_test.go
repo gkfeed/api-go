@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"errors"
 	"path/filepath"
 	"testing"
 	"time"
@@ -65,6 +66,18 @@ func TestFeedAndItemQueries(t *testing.T) {
 	}
 	if len(visible) != 1 {
 		t.Fatalf("GetUserItems() returned %d visible items after deletion, want 1", len(visible))
+	}
+
+	item, itemFeed, err := GetUserItemByID(1, remaining[0].ID)
+	if err != nil {
+		t.Fatalf("GetUserItemByID() returned an error: %v", err)
+	}
+	if item.ID != remaining[0].ID || itemFeed.ID != feed.ID || itemFeed.UserID != 1 {
+		t.Fatalf("GetUserItemByID() = (%#v, %#v), want item and feed owned by user 1", item, itemFeed)
+	}
+
+	if _, _, err := GetUserItemByID(2, remaining[0].ID); !errors.Is(err, sql.ErrNoRows) {
+		t.Fatalf("GetUserItemByID() for another user returned error %v, want sql.ErrNoRows", err)
 	}
 }
 

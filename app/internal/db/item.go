@@ -6,7 +6,14 @@ import (
 	"gkfeed/api/internal/models"
 )
 
-const itemColumns = "item.id, item.feed_id, item.title, item.text, item.date, item.link"
+const (
+	itemColumns         = "item.id, item.feed_id, item.title, item.text, item.date, item.link"
+	itemWithFeedColumns = itemColumns + ", " + feedColumns
+	userItemQuery       = `SELECT ` + itemWithFeedColumns + `
+		FROM item
+		JOIN feed ON item.feed_id = feed.id
+		WHERE item.id = ? AND feed.user_id = ?`
+)
 
 func GetUserItems(userID int) ([]models.Item, error) {
 	return getItems(
@@ -73,18 +80,37 @@ func InsertItemsIntoDeletedItems(userID int, itemIDs []int) error {
 	return nil
 }
 
-func GetItemByID(id int) (models.Item, error) {
+func GetUserItemByID(userID, itemID int) (models.Item, models.Feed, error) {
 	database, err := getDB()
 	if err != nil {
-		return models.Item{}, fmt.Errorf("open database: %w", err)
+		return models.Item{}, models.Feed{}, fmt.Errorf("open database: %w", err)
 	}
 	defer database.Close()
 
-	item, err := scanItem(database.QueryRow("SELECT "+itemColumns+" FROM item WHERE item.id = ?", id))
+	item, feed, err := scanItemWithFeed(database.QueryRow(userItemQuery, itemID, userID))
 	if err != nil {
-		return models.Item{}, fmt.Errorf("get item %d: %w", id, err)
+		return models.Item{}, models.Feed{}, fmt.Errorf("get item %d for user %d: %w", itemID, userID, err)
 	}
-	return item, nil
+	return item, feed, nil
+}
+
+func scanItemWithFeed(row rowScanner) (models.Item, models.Feed, error) {
+	var item models.Item
+	var feed models.Feed
+	err := row.Scan(
+		&item.ID,
+		&item.FeedID,
+		&item.Title,
+		&item.Text,
+		&item.Date,
+		&item.Link,
+		&feed.ID,
+		&feed.Title,
+		&feed.URL,
+		&feed.Type,
+		&feed.UserID,
+	)
+	return item, feed, err
 }
 
 func getItems(query string, args ...any) ([]models.Item, error) {
