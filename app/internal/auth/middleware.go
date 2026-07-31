@@ -36,7 +36,7 @@ func Authenticate(cfg config.Config) func(http.HandlerFunc) http.HandlerFunc {
 			}
 
 			if authHeader := r.Header.Get("Authorization"); authHeader != "" {
-				log.Printf("auth: rejecting request, Authorization header=%q, parsed basic=%v", authHeader[:min(len(authHeader), 30)], ok)
+				log.Printf("auth: rejecting request, Authorization header provided, parsed basic=%v", ok)
 			} else {
 				log.Printf("auth: rejecting request, no Authorization header")
 			}
