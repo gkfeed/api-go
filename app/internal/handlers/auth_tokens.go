@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -33,20 +34,18 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	stored, err := db.GetRefreshToken(req.RefreshToken)
-	if err != nil {
+	stored, err := db.ConsumeRefreshToken(req.RefreshToken)
+	if errors.Is(err, db.ErrRefreshTokenNotFound) {
 		http.Error(w, "Invalid refresh token", http.StatusUnauthorized)
+		return
+	}
+	if err != nil {
+		writeInternalServerError(w, fmt.Errorf("consume refresh token: %w", err))
 		return
 	}
 
 	if time.Now().After(stored.ExpiresAt) {
-		db.DeleteRefreshToken(stored.ID)
 		http.Error(w, "Refresh token expired", http.StatusUnauthorized)
-		return
-	}
-
-	if err := db.DeleteRefreshToken(stored.ID); err != nil {
-		writeInternalServerError(w, fmt.Errorf("delete refresh token: %w", err))
 		return
 	}
 
