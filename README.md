@@ -49,6 +49,8 @@ Docker Compose mounts `~/.local/share/gkfeed/data` at `/data` and configures the
 
 ## API routes
 
+Swagger UI is available at `/api/swagger/index.html`.
+
 | Method | Route | Authentication | Purpose |
 | --- | --- | --- | --- |
 | `GET` | `/api/v1/list` | Basic | List the user's feeds |

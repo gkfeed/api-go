@@ -57,8 +57,8 @@ func newHandler(configuration config.Config) http.Handler {
 	router := mux.NewRouter()
 	authenticate := auth.Authenticate(configuration)
 
-	router.PathPrefix("/swagger/").Handler(httpSwagger.Handler(
-		httpSwagger.URL("/swagger/doc.json"),
+	router.PathPrefix("/api/swagger/").Handler(httpSwagger.Handler(
+		httpSwagger.URL("doc.json"),
 	))
 
 	router.HandleFunc("/test_passkey", func(w http.ResponseWriter, r *http.Request) {

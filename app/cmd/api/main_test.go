@@ -24,6 +24,27 @@ func TestDeleteRouteDoesNotAllowGet(t *testing.T) {
 	}
 }
 
+func TestSwaggerRoutesAreUnderAPI(t *testing.T) {
+	for _, path := range []string{"/api/swagger/index.html", "/api/swagger/doc.json"} {
+		request := httptest.NewRequest(http.MethodGet, path, nil)
+		response := httptest.NewRecorder()
+
+		newHandler(config.Config{}).ServeHTTP(response, request)
+
+		if response.Code != http.StatusOK {
+			t.Fatalf("GET %s returned status %d; want %d", path, response.Code, http.StatusOK)
+		}
+	}
+
+	request := httptest.NewRequest(http.MethodGet, "/swagger/index.html", nil)
+	response := httptest.NewRecorder()
+	newHandler(config.Config{}).ServeHTTP(response, request)
+
+	if response.Code != http.StatusNotFound {
+		t.Fatalf("GET /swagger/index.html returned status %d; want %d", response.Code, http.StatusNotFound)
+	}
+}
+
 func TestMeRouteAcceptsBasicAuth(t *testing.T) {
 	databasePath := filepath.Join(t.TempDir(), "db.sqlite")
 	db.Configure(databasePath)
