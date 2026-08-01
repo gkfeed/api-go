@@ -36,14 +36,12 @@ Configuration is read from environment variables at startup:
 | `GKFEED_ADDRESS` | `:8086` | HTTP server listen address |
 | `GKFEED_DB_PATH` | `../data/db.sqlite` | SQLite path relative to the `app` working directory |
 | `GKFEED_ALLOWED_ORIGINS` | Localhost development origins | Comma-separated CORS origins |
-| `GKFEED_JWT_SECRET` | none (required) | Cryptographically random JWT signing secret of at least 32 bytes |
-| `GKFEED_JWT_ACCESS_TTL` | `30m` | Access-token lifetime |
+| `GKFEED_ACCESS_TTL` | `30m` | Access-token lifetime |
 | `GKFEED_JWT_REFRESH_TTL` | `2160h` | Refresh-token idle lifetime |
 
 ## Docker
 
 ```sh
-export GKFEED_JWT_SECRET="$(openssl rand -base64 32)"
 docker compose up --build -d
 ```
 

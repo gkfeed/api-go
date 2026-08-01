@@ -123,7 +123,6 @@ func TestPasswordLoginRefreshesAndRevokesRotatedSessions(t *testing.T) {
 	}
 
 	handler := newHandler(config.Config{
-		JWTSecret:       strings.Repeat("s", 32),
 		AccessTokenTTL:  30 * time.Minute,
 		RefreshTokenTTL: 90 * 24 * time.Hour,
 	})
