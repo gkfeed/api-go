@@ -3,7 +3,6 @@ package config
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -11,7 +10,7 @@ import (
 
 const (
 	addressEnvironmentVariable           = "GKFEED_ADDRESS"
-	databaseEnvironmentVariable          = "GKFEED_DB_PATH"
+	databaseEnvironmentVariable          = "GKFEED_DATABASE_URL"
 	allowedOriginsEnvironmentVariable    = "GKFEED_ALLOWED_ORIGINS"
 	jwtSecretEnvironmentVariable         = "GKFEED_JWT_SECRET"
 	jwtAccessTTLEnvironmentVariable      = "GKFEED_JWT_ACCESS_TTL"
@@ -36,7 +35,7 @@ const (
 
 type Config struct {
 	Address           string
-	DatabasePath      string
+	DatabaseURL       string
 	AllowedOrigins    []string
 	ReadHeaderTimeout time.Duration
 
@@ -61,7 +60,7 @@ func Load() (Config, error) {
 
 	return Config{
 		Address:           valueOrDefault(addressEnvironmentVariable, ":8086"),
-		DatabasePath:      valueOrDefault(databaseEnvironmentVariable, filepath.Join("..", "data", "db.sqlite")),
+		DatabaseURL:       valueOrDefault(databaseEnvironmentVariable, "postgres://gkfeed:gkfeed@localhost:5432/gkfeed?sslmode=disable"),
 		AllowedOrigins:    allowedOrigins(),
 		ReadHeaderTimeout: 5 * time.Second,
 

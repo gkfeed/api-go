@@ -13,8 +13,6 @@ func MigratePasswords() error {
 	if err != nil {
 		return err
 	}
-	defer database.Close()
-
 	transaction, err := database.Begin()
 	if err != nil {
 		return fmt.Errorf("begin password migration: %w", err)
@@ -55,7 +53,7 @@ func MigratePasswords() error {
 			return fmt.Errorf("hash password for user %d: %w", legacy.id, err)
 		}
 		if _, err := transaction.Exec(
-			"UPDATE users SET hashed_password = ? WHERE id = ?",
+			"UPDATE users SET hashed_password = $1 WHERE id = $2",
 			hashed,
 			legacy.id,
 		); err != nil {

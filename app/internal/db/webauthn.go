@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/go-webauthn/webauthn/webauthn"
 )
@@ -14,18 +15,20 @@ func InitWebAuthnSchema() error {
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
-	defer database.Close()
-
 	_, err = database.Exec(`CREATE TABLE IF NOT EXISTS webauthn_credentials (
-		id BLOB PRIMARY KEY,
+		id BYTEA PRIMARY KEY,
 		user_id INTEGER NOT NULL,
 		credential TEXT NOT NULL,
 		name TEXT NOT NULL DEFAULT '',
-		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-		last_used_at DATETIME
+		created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		last_used_at TIMESTAMPTZ,
+		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 	)`)
 	if err != nil {
 		return fmt.Errorf("create webauthn_credentials table: %w", err)
+	}
+	if _, err := database.Exec("CREATE INDEX IF NOT EXISTS webauthn_credentials_user_id_idx ON webauthn_credentials(user_id)"); err != nil {
+		return fmt.Errorf("create webauthn credentials user index: %w", err)
 	}
 	return nil
 }
@@ -35,15 +38,13 @@ func AddWebAuthnCredential(userID int, credential webauthn.Credential, name stri
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
-	defer database.Close()
-
 	data, err := json.Marshal(credential)
 	if err != nil {
 		return fmt.Errorf("marshal credential: %w", err)
 	}
 
 	_, err = database.Exec(
-		"INSERT INTO webauthn_credentials (id, user_id, credential, name) VALUES (?, ?, ?, ?)",
+		"INSERT INTO webauthn_credentials (id, user_id, credential, name) VALUES ($1, $2, $3, $4)",
 		credential.ID, userID, string(data), name,
 	)
 	if err != nil {
@@ -57,15 +58,13 @@ func UpdateWebAuthnCredential(credential webauthn.Credential) error {
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
-	defer database.Close()
-
 	data, err := json.Marshal(credential)
 	if err != nil {
 		return fmt.Errorf("marshal credential: %w", err)
 	}
 
 	_, err = database.Exec(
-		"UPDATE webauthn_credentials SET credential = ?, last_used_at = CURRENT_TIMESTAMP WHERE id = ?",
+		"UPDATE webauthn_credentials SET credential = $1, last_used_at = CURRENT_TIMESTAMP WHERE id = $2",
 		string(data), credential.ID,
 	)
 	if err != nil {
@@ -79,9 +78,7 @@ func GetWebAuthnCredentialsByUserID(userID int) ([]webauthn.Credential, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open database: %w", err)
 	}
-	defer database.Close()
-
-	rows, err := database.Query("SELECT credential FROM webauthn_credentials WHERE user_id = ?", userID)
+	rows, err := database.Query("SELECT credential FROM webauthn_credentials WHERE user_id = $1", userID)
 	if err != nil {
 		return nil, fmt.Errorf("query webauthn credentials: %w", err)
 	}
@@ -110,11 +107,9 @@ func GetWebAuthnUserIDByCredentialID(credentialID []byte) (int, error) {
 	if err != nil {
 		return 0, fmt.Errorf("open database: %w", err)
 	}
-	defer database.Close()
-
 	var userID int
 	err = database.QueryRow(
-		"SELECT user_id FROM webauthn_credentials WHERE id = ?",
+		"SELECT user_id FROM webauthn_credentials WHERE id = $1",
 		credentialID,
 	).Scan(&userID)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -131,10 +126,8 @@ func DeleteWebAuthnCredential(credentialID []byte, userID int) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("open database: %w", err)
 	}
-	defer database.Close()
-
 	result, err := database.Exec(
-		"DELETE FROM webauthn_credentials WHERE id = ? AND user_id = ?",
+		"DELETE FROM webauthn_credentials WHERE id = $1 AND user_id = $2",
 		credentialID, userID,
 	)
 	if err != nil {
@@ -152,10 +145,8 @@ func ListUserWebAuthnCredentials(userID int) ([]WebAuthnCredentialInfo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open database: %w", err)
 	}
-	defer database.Close()
-
 	rows, err := database.Query(
-		"SELECT id, name, created_at, last_used_at FROM webauthn_credentials WHERE user_id = ? ORDER BY created_at DESC",
+		"SELECT id, name, created_at, last_used_at FROM webauthn_credentials WHERE user_id = $1 ORDER BY created_at DESC",
 		userID,
 	)
 	if err != nil {
@@ -178,8 +169,8 @@ func ListUserWebAuthnCredentials(userID int) ([]WebAuthnCredentialInfo, error) {
 }
 
 type WebAuthnCredentialInfo struct {
-	ID         []byte  `json:"id"`
-	Name       string  `json:"name"`
-	CreatedAt  string  `json:"created_at"`
-	LastUsedAt *string `json:"last_used_at"`
+	ID         []byte     `json:"id"`
+	Name       string     `json:"name"`
+	CreatedAt  time.Time  `json:"created_at"`
+	LastUsedAt *time.Time `json:"last_used_at"`
 }

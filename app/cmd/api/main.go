@@ -38,7 +38,10 @@ func main() {
 	if err != nil {
 		log.Fatalf("configuration: %v", err)
 	}
-	db.Configure(configuration.DatabasePath)
+	if err = db.Configure(configuration.DatabaseURL); err != nil {
+		log.Fatalf("database connection: %v", err)
+	}
+	defer db.Close()
 
 	if err = db.RunMigrations(); err != nil {
 		log.Fatalf("database migration: %v", err)

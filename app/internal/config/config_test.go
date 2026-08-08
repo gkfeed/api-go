@@ -9,7 +9,7 @@ import (
 func TestLoadUsesEnvironment(t *testing.T) {
 	const jwtSecret = "a-random-secret-with-at-least-32-bytes"
 	t.Setenv(addressEnvironmentVariable, "127.0.0.1:9000")
-	t.Setenv(databaseEnvironmentVariable, "/tmp/gkfeed.sqlite")
+	t.Setenv(databaseEnvironmentVariable, "postgres://reader:secret@db.example/gkfeed")
 	t.Setenv(allowedOriginsEnvironmentVariable, "https://one.example, https://two.example")
 	t.Setenv(jwtSecretEnvironmentVariable, jwtSecret)
 
@@ -21,8 +21,8 @@ func TestLoadUsesEnvironment(t *testing.T) {
 	if configuration.Address != "127.0.0.1:9000" {
 		t.Fatalf("Address = %q, want %q", configuration.Address, "127.0.0.1:9000")
 	}
-	if configuration.DatabasePath != "/tmp/gkfeed.sqlite" {
-		t.Fatalf("DatabasePath = %q, want %q", configuration.DatabasePath, "/tmp/gkfeed.sqlite")
+	if configuration.DatabaseURL != "postgres://reader:secret@db.example/gkfeed" {
+		t.Fatalf("DatabaseURL = %q, want configured PostgreSQL URL", configuration.DatabaseURL)
 	}
 	wantOrigins := []string{"https://one.example", "https://two.example"}
 	if !reflect.DeepEqual(configuration.AllowedOrigins, wantOrigins) {

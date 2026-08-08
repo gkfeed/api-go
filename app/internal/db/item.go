@@ -12,7 +12,7 @@ const (
 	userItemQuery       = `SELECT ` + itemWithFeedColumns + `
 		FROM item
 		JOIN feed ON item.feed_id = feed.id
-		WHERE item.id = ? AND feed.user_id = ?`
+		WHERE item.id = $1 AND feed.user_id = $2`
 )
 
 func GetUserItems(userID int) ([]models.Item, error) {
@@ -20,9 +20,9 @@ func GetUserItems(userID int) ([]models.Item, error) {
 		`SELECT `+itemColumns+`
 		FROM item
 		JOIN feed ON item.feed_id = feed.id
-		WHERE feed.user_id = ?
+		WHERE feed.user_id = $1
 		  AND item.id NOT IN (
-			SELECT item_id FROM deleted_items WHERE user_id = ?
+			SELECT item_id FROM deleted_items WHERE user_id = $2
 		)`,
 		userID,
 		userID,
@@ -33,18 +33,18 @@ func GetUserItemsPage(userID int, cursor *int, limit int) ([]models.Item, error)
 	query := `SELECT ` + itemColumns + `
 		FROM item
 		JOIN feed ON item.feed_id = feed.id
-		WHERE feed.user_id = ?
+		WHERE feed.user_id = $1
 		  AND item.id NOT IN (
-			SELECT item_id FROM deleted_items WHERE user_id = ?
+			SELECT item_id FROM deleted_items WHERE user_id = $2
 		  )`
 	args := []any{userID, userID}
 
 	if cursor != nil {
-		query += " AND item.id < ?"
+		query += fmt.Sprintf(" AND item.id < $%d", len(args)+1)
 		args = append(args, *cursor)
 	}
 
-	query += " ORDER BY item.id DESC LIMIT ?"
+	query += fmt.Sprintf(" ORDER BY item.id DESC LIMIT $%d", len(args)+1)
 	args = append(args, limit)
 	return getItems(query, args...)
 }
@@ -54,15 +54,13 @@ func InsertItemsIntoDeletedItems(userID int, itemIDs []int) error {
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
-	defer database.Close()
-
 	transaction, err := database.Begin()
 	if err != nil {
 		return fmt.Errorf("begin deleted-items transaction: %w", err)
 	}
 	defer transaction.Rollback()
 
-	statement, err := transaction.Prepare("INSERT INTO deleted_items (user_id, item_id) VALUES (?, ?)")
+	statement, err := transaction.Prepare("INSERT INTO deleted_items (user_id, item_id) VALUES ($1, $2) ON CONFLICT DO NOTHING")
 	if err != nil {
 		return fmt.Errorf("prepare deleted-item insert: %w", err)
 	}
@@ -85,8 +83,6 @@ func GetUserItemByID(userID, itemID int) (models.Item, models.Feed, error) {
 	if err != nil {
 		return models.Item{}, models.Feed{}, fmt.Errorf("open database: %w", err)
 	}
-	defer database.Close()
-
 	item, feed, err := scanItemWithFeed(database.QueryRow(userItemQuery, itemID, userID))
 	if err != nil {
 		return models.Item{}, models.Feed{}, fmt.Errorf("get item %d for user %d: %w", itemID, userID, err)
@@ -118,8 +114,6 @@ func getItems(query string, args ...any) ([]models.Item, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open database: %w", err)
 	}
-	defer database.Close()
-
 	rows, err := database.Query(query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("query items: %w", err)

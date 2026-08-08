@@ -3,12 +3,14 @@ package db
 import (
 	"database/sql"
 	"errors"
-	"path/filepath"
 	"testing"
 	"time"
 
 	"gkfeed/api/internal/models"
 	"gkfeed/api/internal/passwordhash"
+	"gkfeed/api/internal/testdb"
+
+	"github.com/go-webauthn/webauthn/webauthn"
 )
 
 func TestFeedAndItemQueries(t *testing.T) {
@@ -31,11 +33,10 @@ func TestFeedAndItemQueries(t *testing.T) {
 		t.Fatalf("open test database: %v", err)
 	}
 	_, err = database.Exec(
-		"INSERT INTO item (feed_id, title, text, date, link) VALUES (?, ?, ?, ?, ?), (?, ?, ?, ?, ?)",
+		"INSERT INTO item (feed_id, title, text, date, link) VALUES ($1, $2, $3, $4, $5), ($6, $7, $8, $9, $10)",
 		feed.ID, "First", "first", time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), "https://example.com/first",
 		feed.ID, "Second", "second", time.Date(2026, 1, 2, 0, 0, 0, 0, time.UTC), "https://example.com/second",
 	)
-	database.Close()
 	if err != nil {
 		t.Fatalf("insert test items: %v", err)
 	}
@@ -108,8 +109,6 @@ func TestMigratePasswords(t *testing.T) {
 		database.Close()
 		t.Fatalf("read migrated password: %v", err)
 	}
-	database.Close()
-
 	if err := RunMigrations(); err != nil {
 		t.Fatalf("second RunMigrations() returned error: %v", err)
 	}
@@ -118,7 +117,6 @@ func TestMigratePasswords(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reopen test database: %v", err)
 	}
-	defer database.Close()
 	var hashAfterSecondMigration string
 	if err := database.QueryRow("SELECT hashed_password FROM users WHERE id = 1").Scan(&hashAfterSecondMigration); err != nil {
 		t.Fatalf("read password after second migration: %v", err)
@@ -131,12 +129,11 @@ func TestMigratePasswords(t *testing.T) {
 func TestMigratePasswordsLeavesNullPasswordsAlone(t *testing.T) {
 	useTestDatabase(t)
 
-	database, err := sql.Open("sqlite3", dbPath)
+	database, err := getDB()
 	if err != nil {
 		t.Fatalf("open test database: %v", err)
 	}
-	_, err = database.Exec("INSERT INTO users (id, name, hashed_password) VALUES (?, ?, NULL)", 2, "no-password")
-	database.Close()
+	_, err = database.Exec("INSERT INTO users (id, name, hashed_password) VALUES ($1, $2, NULL)", 2, "no-password")
 	if err != nil {
 		t.Fatalf("insert null password: %v", err)
 	}
@@ -145,11 +142,10 @@ func TestMigratePasswordsLeavesNullPasswordsAlone(t *testing.T) {
 		t.Fatalf("RunMigrations() returned error: %v", err)
 	}
 
-	database, err = sql.Open("sqlite3", dbPath)
+	database, err = getDB()
 	if err != nil {
 		t.Fatalf("reopen test database: %v", err)
 	}
-	defer database.Close()
 	var password sql.NullString
 	if err := database.QueryRow("SELECT hashed_password FROM users WHERE id = 2").Scan(&password); err != nil {
 		t.Fatalf("read null password: %v", err)
@@ -159,31 +155,70 @@ func TestMigratePasswordsLeavesNullPasswordsAlone(t *testing.T) {
 	}
 }
 
+func TestRefreshTokenQueries(t *testing.T) {
+	useTestDatabase(t)
+
+	expiresAt := time.Now().UTC().Add(time.Hour).Truncate(time.Microsecond)
+	token := models.RefreshToken{ID: "refresh-token", UserID: 1, ExpiresAt: expiresAt}
+	if err := StoreRefreshToken(token); err != nil {
+		t.Fatalf("StoreRefreshToken() returned error: %v", err)
+	}
+
+	stored, err := GetRefreshToken(token.ID)
+	if err != nil {
+		t.Fatalf("GetRefreshToken() returned error: %v", err)
+	}
+	if stored.ID != token.ID || stored.UserID != token.UserID || !stored.ExpiresAt.Equal(expiresAt) || stored.CreatedAt.IsZero() {
+		t.Fatalf("GetRefreshToken() = %#v, want stored token", stored)
+	}
+
+	if err := DeleteRefreshToken(token.ID); err != nil {
+		t.Fatalf("DeleteRefreshToken() returned error: %v", err)
+	}
+	if _, err := GetRefreshToken(token.ID); !errors.Is(err, sql.ErrNoRows) {
+		t.Fatalf("GetRefreshToken() after deletion returned %v, want sql.ErrNoRows", err)
+	}
+}
+
+func TestWebAuthnCredentialQueries(t *testing.T) {
+	useTestDatabase(t)
+
+	credential := webauthn.Credential{ID: []byte{0x01, 0x02, 0x03}}
+	if err := AddWebAuthnCredential(1, credential, "Laptop"); err != nil {
+		t.Fatalf("AddWebAuthnCredential() returned error: %v", err)
+	}
+
+	userID, err := GetWebAuthnUserIDByCredentialID(credential.ID)
+	if err != nil || userID != 1 {
+		t.Fatalf("GetWebAuthnUserIDByCredentialID() = (%d, %v), want (1, nil)", userID, err)
+	}
+	credentials, err := GetWebAuthnCredentialsByUserID(1)
+	if err != nil || len(credentials) != 1 || string(credentials[0].ID) != string(credential.ID) {
+		t.Fatalf("GetWebAuthnCredentialsByUserID() = (%#v, %v), want credential", credentials, err)
+	}
+	infos, err := ListUserWebAuthnCredentials(1)
+	if err != nil || len(infos) != 1 || infos[0].Name != "Laptop" || infos[0].CreatedAt.IsZero() {
+		t.Fatalf("ListUserWebAuthnCredentials() = (%#v, %v), want credential info", infos, err)
+	}
+
+	deleted, err := DeleteWebAuthnCredential(credential.ID, 1)
+	if err != nil || !deleted {
+		t.Fatalf("DeleteWebAuthnCredential() = (%t, %v), want (true, nil)", deleted, err)
+	}
+}
+
 func useTestDatabase(t *testing.T) {
 	t.Helper()
 
-	originalPath := dbPath
-	dbPath = filepath.Join(t.TempDir(), "db.sqlite")
-	t.Cleanup(func() { dbPath = originalPath })
-
-	database, err := getDB()
-	if err != nil {
-		t.Fatalf("open test database: %v", err)
+	database, databaseURL := testdb.Start(t)
+	if err := Configure(databaseURL); err != nil {
+		t.Fatalf("configure test database: %v", err)
 	}
-	t.Cleanup(func() { database.Close() })
-
-	schema := []string{
-		"CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, hashed_password TEXT)",
-		"CREATE TABLE feed (id INTEGER PRIMARY KEY, title TEXT, url TEXT, type TEXT, user_id INTEGER)",
-		"CREATE TABLE item (id INTEGER PRIMARY KEY, feed_id INTEGER, title TEXT, text TEXT, date DATETIME, link TEXT)",
-		"CREATE TABLE deleted_items (user_id INTEGER, item_id INTEGER)",
-		"CREATE TABLE webauthn_credentials (id BLOB PRIMARY KEY, user_id INTEGER NOT NULL, credential TEXT NOT NULL, name TEXT NOT NULL DEFAULT '', created_at DATETIME DEFAULT CURRENT_TIMESTAMP, last_used_at DATETIME)",
-		"CREATE TABLE refresh_tokens (id TEXT PRIMARY KEY, user_id INTEGER NOT NULL, expires_at DATETIME NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)",
-		"INSERT INTO users (id, name, hashed_password) VALUES (1, 'reader', 'secret')",
+	t.Cleanup(func() { Close() })
+	if err := RunMigrations(); err != nil {
+		t.Fatalf("initialize test database: %v", err)
 	}
-	for _, statement := range schema {
-		if _, err := database.Exec(statement); err != nil {
-			t.Fatalf("initialize test database: %v", err)
-		}
+	if _, err := database.Exec("INSERT INTO users (id, name, hashed_password) VALUES (1, 'reader', 'secret')"); err != nil {
+		t.Fatalf("insert test user: %v", err)
 	}
 }

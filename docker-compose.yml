@@ -1,4 +1,21 @@
 services:
+  postgres:
+    image: postgres:17-alpine
+    ports:
+      - "${GKFEED_POSTGRES_PORT:-5432}:5432"
+    environment:
+      POSTGRES_DB: gkfeed
+      POSTGRES_USER: gkfeed
+      POSTGRES_PASSWORD: "${GKFEED_POSTGRES_PASSWORD:-gkfeed}"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gkfeed -d gkfeed"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: always
+
   app:
     build:
       context: .
@@ -7,8 +24,12 @@ services:
       - "8086:8086"
     environment:
       GKFEED_ADDRESS: ":8086"
-      GKFEED_DB_PATH: "/data/db.sqlite"
+      GKFEED_DATABASE_URL: "postgres://gkfeed:${GKFEED_POSTGRES_PASSWORD:-gkfeed}@postgres:5432/gkfeed?sslmode=disable"
       GKFEED_JWT_SECRET: "${GKFEED_JWT_SECRET:?set GKFEED_JWT_SECRET to a cryptographically random value of at least 32 bytes}"
-    volumes:
-      - ~/.local/share/gkfeed/data:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: always
+
+volumes:
+  postgres-data:

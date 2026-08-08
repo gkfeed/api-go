@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
+	"time"
 
 	"gkfeed/api/internal/db"
 
@@ -33,10 +34,10 @@ func (h *AuthHandler) ListCredentials(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type credentialResponse struct {
-		ID         string  `json:"id"`
-		Name       string  `json:"name"`
-		CreatedAt  string  `json:"created_at"`
-		LastUsedAt *string `json:"last_used_at"`
+		ID         string     `json:"id"`
+		Name       string     `json:"name"`
+		CreatedAt  time.Time  `json:"created_at"`
+		LastUsedAt *time.Time `json:"last_used_at"`
 	}
 
 	result := make([]credentialResponse, len(infos))

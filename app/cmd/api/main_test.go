@@ -5,12 +5,12 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"slices"
 	"testing"
 
 	"gkfeed/api/internal/config"
 	"gkfeed/api/internal/db"
+	"gkfeed/api/internal/testdb"
 )
 
 func TestDeleteRouteDoesNotAllowGet(t *testing.T) {
@@ -46,22 +46,10 @@ func TestSwaggerRoutesAreUnderAPI(t *testing.T) {
 }
 
 func TestMeRouteAcceptsBasicAuth(t *testing.T) {
-	databasePath := filepath.Join(t.TempDir(), "db.sqlite")
-	db.Configure(databasePath)
-	t.Cleanup(func() { db.Configure("") })
-
-	if err := db.RunMigrations(); err != nil {
-		t.Fatalf("RunMigrations() returned error: %v", err)
-	}
-
-	database, err := sql.Open("sqlite3", databasePath)
-	if err != nil {
-		t.Fatalf("open test database: %v", err)
-	}
-	defer database.Close()
+	database := useTestDatabase(t)
 
 	if _, err := database.Exec(
-		"INSERT INTO users (id, name, hashed_password) VALUES (?, ?, ?)",
+		"INSERT INTO users (id, name, hashed_password) VALUES ($1, $2, $3)",
 		7, "reader", "secret",
 	); err != nil {
 		t.Fatalf("insert test user: %v", err)
@@ -93,19 +81,7 @@ func TestMeRouteAcceptsBasicAuth(t *testing.T) {
 }
 
 func TestItemRouteRequiresAuthenticationAndOwner(t *testing.T) {
-	databasePath := filepath.Join(t.TempDir(), "db.sqlite")
-	db.Configure(databasePath)
-	t.Cleanup(func() { db.Configure("") })
-
-	if err := db.RunMigrations(); err != nil {
-		t.Fatalf("RunMigrations() returned error: %v", err)
-	}
-
-	database, err := sql.Open("sqlite3", databasePath)
-	if err != nil {
-		t.Fatalf("open test database: %v", err)
-	}
-	defer database.Close()
+	database := useTestDatabase(t)
 
 	for _, user := range []struct {
 		id       int
@@ -115,7 +91,7 @@ func TestItemRouteRequiresAuthenticationAndOwner(t *testing.T) {
 		{1, "owner", "owner-password"},
 		{2, "other", "other-password"},
 	} {
-		if _, err := database.Exec("INSERT INTO users (id, name, hashed_password) VALUES (?, ?, ?)", user.id, user.name, user.password); err != nil {
+		if _, err := database.Exec("INSERT INTO users (id, name, hashed_password) VALUES ($1, $2, $3)", user.id, user.name, user.password); err != nil {
 			t.Fatalf("insert test user %d: %v", user.id, err)
 		}
 	}
@@ -123,13 +99,13 @@ func TestItemRouteRequiresAuthenticationAndOwner(t *testing.T) {
 		t.Fatalf("RunMigrations() after legacy user inserts returned error: %v", err)
 	}
 	if _, err := database.Exec(
-		"INSERT INTO feed (id, title, url, type, user_id) VALUES (?, ?, ?, ?, ?)",
+		"INSERT INTO feed (id, title, url, type, user_id) VALUES ($1, $2, $3, $4, $5)",
 		11, "Owner feed", "https://example.com/feed", "web", 1,
 	); err != nil {
 		t.Fatalf("insert test feed: %v", err)
 	}
 	if _, err := database.Exec(
-		"INSERT INTO item (id, feed_id, title, text, date, link) VALUES (?, ?, ?, ?, ?, ?)",
+		"INSERT INTO item (id, feed_id, title, text, date, link) VALUES ($1, $2, $3, $4, $5, $6)",
 		22, 11, "Owner item", "private", "2026-01-01T00:00:00Z", "https://example.com/item",
 	); err != nil {
 		t.Fatalf("insert test item: %v", err)
@@ -179,4 +155,17 @@ func TestFeedTypesRouteIsPublic(t *testing.T) {
 	if !slices.Contains(feedTypes, "web") || !slices.Contains(feedTypes, "spoti:playlist") {
 		t.Fatalf("GET /api/v1/feed_types returned unexpected feed types: %#v", feedTypes)
 	}
+}
+
+func useTestDatabase(t *testing.T) *sql.DB {
+	t.Helper()
+	database, databaseURL := testdb.Start(t)
+	if err := db.Configure(databaseURL); err != nil {
+		t.Fatalf("configure test database: %v", err)
+	}
+	t.Cleanup(func() { db.Close() })
+	if err := db.RunMigrations(); err != nil {
+		t.Fatalf("RunMigrations() returned error: %v", err)
+	}
+	return database
 }

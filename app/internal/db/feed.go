@@ -9,7 +9,7 @@ import (
 const feedColumns = "feed.id, feed.title, feed.url, feed.type, feed.user_id"
 
 func GetUserFeeds(userID int) ([]models.Feed, error) {
-	return getFeeds("SELECT "+feedColumns+" FROM feed WHERE user_id = ?", userID)
+	return getFeeds("SELECT "+feedColumns+" FROM feed WHERE user_id = $1", userID)
 }
 
 func getFeeds(query string, args ...any) ([]models.Feed, error) {
@@ -17,8 +17,6 @@ func getFeeds(query string, args ...any) ([]models.Feed, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open database: %w", err)
 	}
-	defer database.Close()
-
 	rows, err := database.Query(query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("query feeds: %w", err)
@@ -46,26 +44,20 @@ func AddFeed(feedInput models.Feed, userID int) (models.Feed, error) {
 	if err != nil {
 		return models.Feed{}, fmt.Errorf("open database: %w", err)
 	}
-	defer database.Close()
-
-	result, err := database.Exec(
-		"INSERT INTO feed (title, type, url, user_id) VALUES (?, ?, ?, ?)",
+	var feedID int
+	err = database.QueryRow(
+		"INSERT INTO feed (title, type, url, user_id) VALUES ($1, $2, $3, $4) RETURNING id",
 		feedInput.Title,
 		feedInput.Type,
 		feedInput.URL,
 		userID,
-	)
+	).Scan(&feedID)
 	if err != nil {
 		return models.Feed{}, fmt.Errorf("insert feed: %w", err)
 	}
 
-	feedID, err := result.LastInsertId()
-	if err != nil {
-		return models.Feed{}, fmt.Errorf("get inserted feed ID: %w", err)
-	}
-
 	return models.Feed{
-		ID:     int(feedID),
+		ID:     feedID,
 		Title:  feedInput.Title,
 		Type:   feedInput.Type,
 		URL:    feedInput.URL,
@@ -78,9 +70,7 @@ func DeleteFeedByID(id int) error {
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
-	defer database.Close()
-
-	_, err = database.Exec("DELETE FROM feed WHERE id = ?", id)
+	_, err = database.Exec("DELETE FROM feed WHERE id = $1", id)
 	if err != nil {
 		return fmt.Errorf("delete feed %d: %w", id, err)
 	}
@@ -92,9 +82,7 @@ func GetFeedByID(id int) (models.Feed, error) {
 	if err != nil {
 		return models.Feed{}, fmt.Errorf("open database: %w", err)
 	}
-	defer database.Close()
-
-	feed, err := scanFeed(database.QueryRow("SELECT "+feedColumns+" FROM feed WHERE id = ?", id))
+	feed, err := scanFeed(database.QueryRow("SELECT "+feedColumns+" FROM feed WHERE id = $1", id))
 	if err != nil {
 		return models.Feed{}, fmt.Errorf("get feed %d: %w", id, err)
 	}
