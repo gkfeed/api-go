@@ -45,6 +45,20 @@ type Config struct {
 	WebAuthnRPDisplay string
 }
 
+func (c Config) EffectiveAccessTokenTTL() time.Duration {
+	if c.AccessTokenTTL > 0 {
+		return c.AccessTokenTTL
+	}
+	return defaultAccessTokenTTL
+}
+
+func (c Config) EffectiveRefreshTokenTTL() time.Duration {
+	if c.RefreshTokenTTL > 0 {
+		return c.RefreshTokenTTL
+	}
+	return defaultRefreshTokenTTL
+}
+
 func Load() (Config, error) {
 	return Config{
 		Address:           valueOrDefault(addressEnvironmentVariable, ":8086"),

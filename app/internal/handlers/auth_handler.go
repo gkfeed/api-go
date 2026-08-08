@@ -12,7 +12,7 @@ type AuthHandler struct {
 }
 
 func NewAuthHandler(cfg config.Config, webAuthnService *auth.WebAuthnService) *AuthHandler {
-	return NewAuthHandlerWithSessions(cfg, webAuthnService, auth.NewSessionStore(cfg.AccessTokenTTL))
+	return NewAuthHandlerWithSessions(cfg, webAuthnService, nil)
 }
 
 func NewAuthHandlerWithSessions(
@@ -20,5 +20,8 @@ func NewAuthHandlerWithSessions(
 	webAuthnService *auth.WebAuthnService,
 	sessions *auth.SessionStore,
 ) *AuthHandler {
+	if sessions == nil {
+		sessions = auth.NewSessionStore(cfg.EffectiveAccessTokenTTL())
+	}
 	return &AuthHandler{cfg: cfg, webAuthnService: webAuthnService, sessions: sessions}
 }

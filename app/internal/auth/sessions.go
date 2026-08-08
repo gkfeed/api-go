@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -13,7 +14,6 @@ import (
 
 const (
 	opaqueTokenSize        = 32
-	defaultSessionTTL      = 30 * time.Minute
 	defaultTokenFamilySize = 32
 )
 
@@ -33,13 +33,9 @@ type SessionStore struct {
 	sessions map[string]Session
 }
 
-func NewSessionStore(ttl ...time.Duration) *SessionStore {
-	sessionTTL := defaultSessionTTL
-	if len(ttl) > 0 && ttl[0] > 0 {
-		sessionTTL = ttl[0]
-	}
+func NewSessionStore(ttl time.Duration) *SessionStore {
 	return &SessionStore{
-		ttl:      sessionTTL,
+		ttl:      ttl,
 		sessions: make(map[string]Session),
 	}
 }
@@ -55,19 +51,26 @@ func (s *SessionStore) Create(user models.User, familyID []byte) (string, error)
 	if err != nil {
 		return "", err
 	}
-	now := time.Now()
-	key := string(DigestToken(token))
-	storedFamilyID := append([]byte(nil), familyID...)
+	s.Add(token, user, familyID)
+	return token, nil
+}
 
+// Add stores a previously generated access token. This lets callers generate
+// every token before committing another state change, such as refresh rotation.
+func (s *SessionStore) Add(token string, user models.User, familyID []byte) {
+	if s == nil {
+		return
+	}
+
+	now := time.Now()
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.removeExpired(now)
-	s.sessions[key] = Session{
+	s.sessions[string(DigestToken(token))] = Session{
 		User:      user,
-		FamilyID:  storedFamilyID,
+		FamilyID:  append([]byte(nil), familyID...),
 		ExpiresAt: now.Add(s.ttl),
 	}
-	return token, nil
 }
 
 func (s *SessionStore) Get(token string) (Session, bool) {
@@ -129,7 +132,7 @@ func (s *SessionStore) removeExpired(now time.Time) {
 func GenerateOpaqueToken() (string, error) {
 	raw := make([]byte, opaqueTokenSize)
 	if _, err := rand.Read(raw); err != nil {
-		return "", errors.New("generate token: " + err.Error())
+		return "", fmt.Errorf("generate token: %w", err)
 	}
 	return base64.RawURLEncoding.EncodeToString(raw), nil
 }
@@ -137,7 +140,7 @@ func GenerateOpaqueToken() (string, error) {
 func GenerateTokenFamily() ([]byte, error) {
 	familyID := make([]byte, defaultTokenFamilySize)
 	if _, err := rand.Read(familyID); err != nil {
-		return nil, errors.New("generate token family: " + err.Error())
+		return nil, fmt.Errorf("generate token family: %w", err)
 	}
 	return familyID, nil
 }

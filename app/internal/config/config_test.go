@@ -3,6 +3,7 @@ package config
 import (
 	"reflect"
 	"testing"
+	"time"
 )
 
 func TestLoadUsesEnvironment(t *testing.T) {
@@ -28,6 +29,26 @@ func TestLoadUsesEnvironment(t *testing.T) {
 	}
 	if configuration.AccessTokenTTL.String() != "45m0s" {
 		t.Fatalf("AccessTokenTTL = %s, want 45m0s", configuration.AccessTokenTTL)
+	}
+}
+
+func TestEffectiveTokenTTLs(t *testing.T) {
+	if got := (Config{}).EffectiveAccessTokenTTL(); got != 30*time.Minute {
+		t.Fatalf("default access-token TTL = %s, want 30m", got)
+	}
+	if got := (Config{}).EffectiveRefreshTokenTTL(); got != 90*24*time.Hour {
+		t.Fatalf("default refresh-token TTL = %s, want 2160h", got)
+	}
+
+	configuration := Config{
+		AccessTokenTTL:  time.Minute,
+		RefreshTokenTTL: time.Hour,
+	}
+	if got := configuration.EffectiveAccessTokenTTL(); got != time.Minute {
+		t.Fatalf("configured access-token TTL = %s, want 1m", got)
+	}
+	if got := configuration.EffectiveRefreshTokenTTL(); got != time.Hour {
+		t.Fatalf("configured refresh-token TTL = %s, want 1h", got)
 	}
 }
 

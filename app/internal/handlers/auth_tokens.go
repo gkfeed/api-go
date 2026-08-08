@@ -11,11 +11,6 @@ import (
 	"gkfeed/api/internal/models"
 )
 
-const (
-	defaultAccessTokenTTL  = 30 * time.Minute
-	defaultRefreshTokenTTL = 90 * 24 * time.Hour
-)
-
 type refreshRequest struct {
 	RefreshToken string `json:"refresh_token"`
 }
@@ -29,15 +24,10 @@ type tokenResponse struct {
 }
 
 func (h *AuthHandler) issueTokenPair(user models.User) (tokenResponse, error) {
-	accessTTL := h.cfg.AccessTokenTTL
-	if accessTTL <= 0 {
-		accessTTL = defaultAccessTokenTTL
+	accessToken, err := auth.GenerateOpaqueToken()
+	if err != nil {
+		return tokenResponse{}, err
 	}
-	refreshTTL := h.cfg.RefreshTokenTTL
-	if refreshTTL <= 0 {
-		refreshTTL = defaultRefreshTokenTTL
-	}
-
 	refreshToken, err := auth.GenerateOpaqueToken()
 	if err != nil {
 		return tokenResponse{}, err
@@ -50,27 +40,23 @@ func (h *AuthHandler) issueTokenPair(user models.User) (tokenResponse, error) {
 		user.ID,
 		auth.DigestToken(refreshToken),
 		familyID,
-		time.Now().Add(refreshTTL),
+		time.Now().Add(h.cfg.EffectiveRefreshTokenTTL()),
 	); err != nil {
 		return tokenResponse{}, fmt.Errorf("store refresh token: %w", err)
 	}
 
-	if h.sessions == nil {
-		h.sessions = auth.NewSessionStore(accessTTL)
-	}
-	accessToken, err := h.sessions.Create(models.User{ID: user.ID, Name: user.Name}, familyID)
-	if err != nil {
-		_, _ = db.RevokeAuthRefreshToken(auth.DigestToken(refreshToken), time.Now())
-		return tokenResponse{}, fmt.Errorf("create access token: %w", err)
-	}
+	h.sessions.Add(accessToken, models.User{ID: user.ID, Name: user.Name}, familyID)
+	return h.tokenResponse(accessToken, refreshToken), nil
+}
 
+func (h *AuthHandler) tokenResponse(accessToken, refreshToken string) tokenResponse {
 	return tokenResponse{
 		AccessToken:      accessToken,
 		RefreshToken:     refreshToken,
 		TokenType:        "Bearer",
-		ExpiresIn:        int64(accessTTL / time.Second),
-		RefreshExpiresIn: int64(refreshTTL / time.Second),
-	}, nil
+		ExpiresIn:        int64(h.cfg.EffectiveAccessTokenTTL() / time.Second),
+		RefreshExpiresIn: int64(h.cfg.EffectiveRefreshTokenTTL() / time.Second),
+	}
 }
 
 // @Summary      Refresh access token
@@ -96,13 +82,14 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	refreshTTL := h.cfg.RefreshTokenTTL
-	if refreshTTL <= 0 {
-		refreshTTL = defaultRefreshTokenTTL
-	}
 	newRefreshToken, err := auth.GenerateOpaqueToken()
 	if err != nil {
 		writeInternalServerError(w, fmt.Errorf("generate refresh token: %w", err))
+		return
+	}
+	accessToken, err := auth.GenerateOpaqueToken()
+	if err != nil {
+		writeInternalServerError(w, fmt.Errorf("generate access token: %w", err))
 		return
 	}
 	now := time.Now()
@@ -110,7 +97,7 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 		auth.DigestToken(req.RefreshToken),
 		auth.DigestToken(newRefreshToken),
 		now,
-		now.Add(refreshTTL),
+		now.Add(h.cfg.EffectiveRefreshTokenTTL()),
 	)
 	if err != nil {
 		if errors.Is(err, db.ErrInvalidRefreshToken) || errors.Is(err, db.ErrRefreshTokenReuse) {
@@ -124,26 +111,8 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	accessTTL := h.cfg.AccessTokenTTL
-	if accessTTL <= 0 {
-		accessTTL = defaultAccessTokenTTL
-	}
-	if h.sessions == nil {
-		h.sessions = auth.NewSessionStore(accessTTL)
-	}
-	accessToken, err := h.sessions.Create(rotation.User, rotation.FamilyID)
-	if err != nil {
-		writeInternalServerError(w, fmt.Errorf("create access token: %w", err))
-		return
-	}
-
-	writeJSON(w, tokenResponse{
-		AccessToken:      accessToken,
-		RefreshToken:     newRefreshToken,
-		TokenType:        "Bearer",
-		ExpiresIn:        int64(accessTTL / time.Second),
-		RefreshExpiresIn: int64(refreshTTL / time.Second),
-	})
+	h.sessions.Add(accessToken, rotation.User, rotation.FamilyID)
+	writeJSON(w, h.tokenResponse(accessToken, newRefreshToken))
 }
 
 // @Summary      Logout

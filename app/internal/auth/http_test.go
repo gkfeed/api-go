@@ -6,10 +6,11 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
+	"time"
 
-	"gkfeed/api/internal/config"
 	"gkfeed/api/internal/models"
 	"gkfeed/api/internal/passwordhash"
 )
@@ -85,7 +86,7 @@ func TestAuthenticateFallsBackToBasicAuth(t *testing.T) {
 	})
 
 	var receivedUser models.User
-	handler := Authenticate(config.Config{})(func(w http.ResponseWriter, r *http.Request) {
+	handler := Authenticate(nil)(func(w http.ResponseWriter, r *http.Request) {
 		receivedUser, _ = UserFromContext(r.Context())
 		w.WriteHeader(http.StatusNoContent)
 	})
@@ -105,7 +106,7 @@ func TestAuthenticateFallsBackToBasicAuth(t *testing.T) {
 }
 
 func TestAuthenticateRejectsWithoutCredentials(t *testing.T) {
-	handler := Authenticate(config.Config{})(func(http.ResponseWriter, *http.Request) {
+	handler := Authenticate(nil)(func(http.ResponseWriter, *http.Request) {
 		t.Fatal("protected handler was called")
 	})
 
@@ -116,6 +117,41 @@ func TestAuthenticateRejectsWithoutCredentials(t *testing.T) {
 
 	if response.Code != http.StatusUnauthorized {
 		t.Fatalf("status = %d, want %d", response.Code, http.StatusUnauthorized)
+	}
+}
+
+func TestAuthenticateAdvertisesBearerAndBasicAuth(t *testing.T) {
+	handler := Authenticate(NewSessionStore(time.Minute))(func(http.ResponseWriter, *http.Request) {
+		t.Fatal("protected handler was called")
+	})
+
+	response := httptest.NewRecorder()
+	handler(response, httptest.NewRequest(http.MethodGet, "/", nil))
+
+	want := []string{"Bearer", `Basic realm="Restricted"`}
+	if got := response.Header().Values("WWW-Authenticate"); !slices.Equal(got, want) {
+		t.Fatalf("WWW-Authenticate = %q, want %q", got, want)
+	}
+}
+
+func TestParseBearerToken(t *testing.T) {
+	for _, test := range []struct {
+		header string
+		token  string
+		ok     bool
+	}{
+		{header: "Bearer token", token: "token", ok: true},
+		{header: "bearer token", token: "token", ok: true},
+		{header: "  Bearer   token  ", token: "token", ok: true},
+		{header: "Bearer ", ok: false},
+		{header: "Basic token", ok: false},
+	} {
+		t.Run(test.header, func(t *testing.T) {
+			token, ok := parseBearerToken(test.header)
+			if token != test.token || ok != test.ok {
+				t.Fatalf("parseBearerToken(%q) = %q, %v; want %q, %v", test.header, token, ok, test.token, test.ok)
+			}
+		})
 	}
 }
 
@@ -131,7 +167,7 @@ func TestAuthenticateDoesNotLogAuthorizationHeader(t *testing.T) {
 		log.SetOutput(previousOutput)
 	})
 
-	handler := Authenticate(config.Config{})(func(http.ResponseWriter, *http.Request) {
+	handler := Authenticate(nil)(func(http.ResponseWriter, *http.Request) {
 		t.Fatal("protected handler was called")
 	})
 	request := httptest.NewRequest(http.MethodGet, "/", nil)

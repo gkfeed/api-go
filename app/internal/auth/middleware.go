@@ -4,15 +4,9 @@ import (
 	"log"
 	"net/http"
 	"strings"
-
-	"gkfeed/api/internal/config"
 )
 
-func Authenticate(_ config.Config) func(http.HandlerFunc) http.HandlerFunc {
-	return AuthenticateWithSessions(config.Config{}, nil)
-}
-
-func AuthenticateWithSessions(_ config.Config, sessions *SessionStore) func(http.HandlerFunc) http.HandlerFunc {
+func Authenticate(sessions *SessionStore) func(http.HandlerFunc) http.HandlerFunc {
 	return func(handler http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			if sessions != nil {
@@ -45,10 +39,9 @@ func AuthenticateWithSessions(_ config.Config, sessions *SessionStore) func(http
 				log.Printf("auth: rejecting request, no Authorization header")
 			}
 			if sessions != nil {
-				w.Header().Set("WWW-Authenticate", "Bearer")
-			} else {
-				w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
+				w.Header().Add("WWW-Authenticate", "Bearer")
 			}
+			w.Header().Add("WWW-Authenticate", `Basic realm="Restricted"`)
 			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		}
 	}
@@ -63,8 +56,10 @@ func bearerToken(r *http.Request) string {
 }
 
 func parseBearerToken(header string) (string, bool) {
-	if !strings.HasPrefix(header, "Bearer ") {
+	scheme, token, ok := strings.Cut(strings.TrimSpace(header), " ")
+	if !ok || !strings.EqualFold(scheme, "Bearer") {
 		return "", false
 	}
-	return strings.TrimPrefix(header, "Bearer "), true
+	token = strings.TrimSpace(token)
+	return token, token != ""
 }

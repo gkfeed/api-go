@@ -55,8 +55,8 @@ func main() {
 
 func newHandler(configuration config.Config) http.Handler {
 	router := mux.NewRouter()
-	sessions := auth.NewSessionStore(configuration.AccessTokenTTL)
-	authenticate := auth.AuthenticateWithSessions(configuration, sessions)
+	sessions := auth.NewSessionStore(configuration.EffectiveAccessTokenTTL())
+	authenticate := auth.Authenticate(sessions)
 
 	router.PathPrefix("/api/swagger/").Handler(httpSwagger.Handler(
 		httpSwagger.URL("doc.json"),
