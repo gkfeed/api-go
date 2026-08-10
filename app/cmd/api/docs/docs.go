@@ -29,7 +29,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Adds a new RSS/YouTube/TikTok feed for the authenticated user.",
+                "description": "Adds a feed for the authenticated user. Type inbox creates or returns the user's single Inbox feed.",
                 "consumes": [
                     "application/json"
                 ],
@@ -714,7 +714,7 @@ const docTemplate = `{
         },
         "/api/v1/feed_types": {
             "get": {
-                "description": "Returns all feed type identifiers supported by the parser.",
+                "description": "Returns all feed type identifiers available to the API. Inbox is an internal feed and is not parser-backed.",
                 "produces": [
                     "application/json"
                 ],
@@ -731,94 +731,6 @@ const docTemplate = `{
                                 "type": "string"
                             }
                         }
-                    }
-                }
-            }
-        },
-        "/api/v1/feeds/me/inbox": {
-            "post": {
-                "security": [
-                    {
-                        "BasicAuth": []
-                    },
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Explicitly creates one Inbox feed, or returns the existing Inbox.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "inbox"
-                ],
-                "summary": "Create the authenticated user's Inbox",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/models.Feed"
-                        }
-                    },
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/models.Feed"
-                        }
-                    },
-                    "401": {
-                        "description": ""
-                    },
-                    "500": {
-                        "description": ""
-                    }
-                }
-            }
-        },
-        "/api/v1/feeds/me/inbox/items": {
-            "get": {
-                "security": [
-                    {
-                        "BasicAuth": []
-                    },
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Lists the authenticated user's independent Inbox item clones and delivery metadata.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "inbox"
-                ],
-                "summary": "List Inbox items",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "unread, read, or archived",
-                        "name": "state",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.inboxItemsResponse"
-                        }
-                    },
-                    "400": {
-                        "description": ""
-                    },
-                    "401": {
-                        "description": ""
-                    },
-                    "404": {
-                        "description": ""
-                    },
-                    "500": {
-                        "description": ""
                     }
                 }
             }
@@ -853,6 +765,12 @@ const docTemplate = `{
                         "description": "Pagination cursor (item ID)",
                         "name": "cursor",
                         "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Only return items from this owned feed",
+                        "name": "feed_id",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -869,81 +787,6 @@ const docTemplate = `{
                         "description": ""
                     },
                     "500": {
-                        "description": ""
-                    }
-                }
-            }
-        },
-        "/api/v1/inbox/items/{item_id}/archive": {
-            "post": {
-                "security": [
-                    {
-                        "BasicAuth": []
-                    },
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "inbox"
-                ],
-                "summary": "Archive an Inbox item",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/models.Delivery"
-                        }
-                    },
-                    "400": {
-                        "description": ""
-                    },
-                    "401": {
-                        "description": ""
-                    },
-                    "404": {
-                        "description": ""
-                    }
-                }
-            }
-        },
-        "/api/v1/inbox/items/{item_id}/read": {
-            "post": {
-                "security": [
-                    {
-                        "BasicAuth": []
-                    },
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "inbox"
-                ],
-                "summary": "Mark an Inbox item as read",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/models.Delivery"
-                        }
-                    },
-                    "400": {
-                        "description": ""
-                    },
-                    "401": {
-                        "description": ""
-                    },
-                    "404": {
-                        "description": ""
-                    },
-                    "409": {
                         "description": ""
                     }
                 }
@@ -1057,7 +900,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Atomically creates an independent item clone and delivery. Network retries must reuse Idempotency-Key.",
+                "description": "Atomically creates an independent item clone and delivery. The clone is read through the normal feed APIs. Network retries must reuse Idempotency-Key.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1065,9 +908,9 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "inbox"
+                    "feeds"
                 ],
-                "summary": "Share an item into another user's Inbox",
+                "summary": "Share an item into another user's Inbox feed",
                 "parameters": [
                     {
                         "type": "string",
@@ -1150,17 +993,6 @@ const docTemplate = `{
                 }
             }
         },
-        "handlers.inboxItemsResponse": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.InboxItem"
-                    }
-                }
-            }
-        },
         "handlers.refreshRequest": {
             "type": "object",
             "properties": {
@@ -1194,9 +1026,6 @@ const docTemplate = `{
         "models.Delivery": {
             "type": "object",
             "properties": {
-                "archived_at": {
-                    "type": "string"
-                },
                 "created_at": {
                     "type": "string"
                 },
@@ -1212,17 +1041,11 @@ const docTemplate = `{
                 "note": {
                     "type": "string"
                 },
-                "read_at": {
-                    "type": "string"
-                },
                 "recipient_user_id": {
                     "type": "integer"
                 },
                 "sender_user_id": {
                     "type": "integer"
-                },
-                "state": {
-                    "type": "string"
                 }
             }
         },
@@ -1246,22 +1069,14 @@ const docTemplate = `{
                 }
             }
         },
-        "models.InboxItem": {
-            "type": "object",
-            "properties": {
-                "delivery": {
-                    "$ref": "#/definitions/models.Delivery"
-                },
-                "item": {
-                    "$ref": "#/definitions/models.Item"
-                }
-            }
-        },
         "models.Item": {
             "type": "object",
             "properties": {
                 "date": {
                     "type": "string"
+                },
+                "delivery": {
+                    "$ref": "#/definitions/models.ItemDelivery"
                 },
                 "feed_id": {
                     "type": "integer"
@@ -1277,6 +1092,23 @@ const docTemplate = `{
                 },
                 "title": {
                     "type": "string"
+                }
+            }
+        },
+        "models.ItemDelivery": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "delivery_id": {
+                    "type": "string"
+                },
+                "note": {
+                    "type": "string"
+                },
+                "sender_user_id": {
+                    "type": "integer"
                 }
             }
         }

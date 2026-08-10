@@ -233,23 +233,29 @@ func TestInboxRoutes(t *testing.T) {
 		t.Fatalf("share before Inbox creation status = %d, want %d", response.Code, http.StatusNotFound)
 	}
 
-	response = doRequest(http.MethodPost, "/api/v1/feeds/me/inbox", "recipient", "recipient-password", "", "")
-	if response.Code != http.StatusCreated {
-		t.Fatalf("create Inbox status = %d, want %d: %s", response.Code, http.StatusCreated, response.Body.String())
+	response = doRequest(http.MethodPost, "/api/v1/add", "recipient", "recipient-password", `{"type":"inbox"}`, "")
+	if response.Code != http.StatusOK {
+		t.Fatalf("create Inbox through generic feed route status = %d, want %d: %s", response.Code, http.StatusOK, response.Body.String())
 	}
 	var createdInbox struct {
-		ID int `json:"id"`
+		Created bool `json:"created"`
+		Item    struct {
+			ID int `json:"id"`
+		} `json:"item"`
 	}
 	if err := json.NewDecoder(response.Body).Decode(&createdInbox); err != nil {
 		t.Fatalf("decode Inbox creation response: %v", err)
 	}
-	response = doRequest(http.MethodDelete, "/api/v1/delete?id="+strconv.Itoa(createdInbox.ID), "recipient", "recipient-password", "", "")
+	if !createdInbox.Created || createdInbox.Item.ID == 0 {
+		t.Fatalf("generic feed creation response = %#v, want a created Inbox", createdInbox)
+	}
+	response = doRequest(http.MethodDelete, "/api/v1/delete?id="+strconv.Itoa(createdInbox.Item.ID), "recipient", "recipient-password", "", "")
 	if response.Code != http.StatusConflict {
 		t.Fatalf("delete Inbox status = %d, want %d", response.Code, http.StatusConflict)
 	}
-	response = doRequest(http.MethodPost, "/api/v1/feeds/me/inbox", "recipient", "recipient-password", "", "")
+	response = doRequest(http.MethodPost, "/api/v1/add", "recipient", "recipient-password", `{"type":"inbox"}`, "")
 	if response.Code != http.StatusOK {
-		t.Fatalf("repeat Inbox creation status = %d, want %d", response.Code, http.StatusOK)
+		t.Fatalf("repeat generic Inbox creation status = %d, want %d", response.Code, http.StatusOK)
 	}
 
 	response = doRequest(http.MethodPost, "/api/v1/shares", "sender", "sender-password", shareBody, "share-route-test")
@@ -281,9 +287,9 @@ func TestInboxRoutes(t *testing.T) {
 		t.Fatalf("share retry delivery ID = %q, want %q", retryDelivery.ID, createdDelivery.ID)
 	}
 
-	response = doRequest(http.MethodGet, "/api/v1/feeds/me/inbox/items?state=unread", "recipient", "recipient-password", "", "")
+	response = doRequest(http.MethodGet, "/api/v1/get_items?feed_id="+strconv.Itoa(createdInbox.Item.ID), "recipient", "recipient-password", "", "")
 	if response.Code != http.StatusOK {
-		t.Fatalf("list Inbox status = %d, want %d: %s", response.Code, http.StatusOK, response.Body.String())
+		t.Fatalf("list Inbox through generic items route status = %d, want %d: %s", response.Code, http.StatusOK, response.Body.String())
 	}
 	var inbox struct {
 		Items []json.RawMessage `json:"items"`
@@ -295,17 +301,18 @@ func TestInboxRoutes(t *testing.T) {
 		t.Fatalf("Inbox contains %d items, want 1", len(inbox.Items))
 	}
 
-	itemPath := "/api/v1/inbox/items/" + strconv.Itoa(createdDelivery.ItemID)
-	response = doRequest(http.MethodPost, itemPath+"/read", "sender", "sender-password", "", "")
-	if response.Code != http.StatusNotFound {
-		t.Fatalf("sender reading recipient item status = %d, want %d", response.Code, http.StatusNotFound)
-	}
-	response = doRequest(http.MethodPost, itemPath+"/read", "recipient", "recipient-password", "", "")
+	response = doRequest(http.MethodPost, "/api/v1/add_deleted_items", "recipient", "recipient-password", `{"itemIds":[`+strconv.Itoa(createdDelivery.ItemID)+`]}`, "")
 	if response.Code != http.StatusOK {
-		t.Fatalf("mark Inbox item read status = %d, want %d", response.Code, http.StatusOK)
+		t.Fatalf("archive Inbox item through generic item route status = %d, want %d", response.Code, http.StatusOK)
 	}
-	response = doRequest(http.MethodPost, itemPath+"/archive", "recipient", "recipient-password", "", "")
+	response = doRequest(http.MethodGet, "/api/v1/get_items?feed_id="+strconv.Itoa(createdInbox.Item.ID), "recipient", "recipient-password", "", "")
 	if response.Code != http.StatusOK {
-		t.Fatalf("archive Inbox item status = %d, want %d", response.Code, http.StatusOK)
+		t.Fatalf("list Inbox after archive status = %d, want %d", response.Code, http.StatusOK)
+	}
+	if err := json.NewDecoder(response.Body).Decode(&inbox); err != nil {
+		t.Fatalf("decode Inbox after archive: %v", err)
+	}
+	if len(inbox.Items) != 0 {
+		t.Fatalf("Inbox contains %d items after archive, want 0", len(inbox.Items))
 	}
 }

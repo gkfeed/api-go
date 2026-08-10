@@ -15,13 +15,6 @@ definitions:
       next_cursor:
         type: integer
     type: object
-  handlers.inboxItemsResponse:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/models.InboxItem'
-        type: array
-    type: object
   handlers.refreshRequest:
     properties:
       refresh_token:
@@ -43,8 +36,6 @@ definitions:
     type: object
   models.Delivery:
     properties:
-      archived_at:
-        type: string
       created_at:
         type: string
       delivery_id:
@@ -55,14 +46,10 @@ definitions:
         type: integer
       note:
         type: string
-      read_at:
-        type: string
       recipient_user_id:
         type: integer
       sender_user_id:
         type: integer
-      state:
-        type: string
     type: object
   models.Feed:
     properties:
@@ -77,17 +64,12 @@ definitions:
       userid:
         type: integer
     type: object
-  models.InboxItem:
-    properties:
-      delivery:
-        $ref: '#/definitions/models.Delivery'
-      item:
-        $ref: '#/definitions/models.Item'
-    type: object
   models.Item:
     properties:
       date:
         type: string
+      delivery:
+        $ref: '#/definitions/models.ItemDelivery'
       feed_id:
         type: integer
       id:
@@ -98,6 +80,17 @@ definitions:
         type: string
       title:
         type: string
+    type: object
+  models.ItemDelivery:
+    properties:
+      created_at:
+        type: string
+      delivery_id:
+        type: string
+      note:
+        type: string
+      sender_user_id:
+        type: integer
     type: object
 info:
   contact:
@@ -111,7 +104,8 @@ paths:
     post:
       consumes:
       - application/json
-      description: Adds a new RSS/YouTube/TikTok feed for the authenticated user.
+      description: Adds a feed for the authenticated user. Type inbox creates or returns
+        the user's single Inbox feed.
       parameters:
       - description: Feed to add (title, type, url)
         in: body
@@ -520,7 +514,8 @@ paths:
       - feeds
   /api/v1/feed_types:
     get:
-      description: Returns all feed type identifiers supported by the parser.
+      description: Returns all feed type identifiers available to the API. Inbox is
+        an internal feed and is not parser-backed.
       produces:
       - application/json
       responses:
@@ -533,60 +528,6 @@ paths:
       summary: List feed types
       tags:
       - feeds
-  /api/v1/feeds/me/inbox:
-    post:
-      description: Explicitly creates one Inbox feed, or returns the existing Inbox.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/models.Feed'
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/models.Feed'
-        "401":
-          description: ""
-        "500":
-          description: ""
-      security:
-      - BasicAuth: []
-      - BearerAuth: []
-      summary: Create the authenticated user's Inbox
-      tags:
-      - inbox
-  /api/v1/feeds/me/inbox/items:
-    get:
-      description: Lists the authenticated user's independent Inbox item clones and
-        delivery metadata.
-      parameters:
-      - description: unread, read, or archived
-        in: query
-        name: state
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/handlers.inboxItemsResponse'
-        "400":
-          description: ""
-        "401":
-          description: ""
-        "404":
-          description: ""
-        "500":
-          description: ""
-      security:
-      - BasicAuth: []
-      - BearerAuth: []
-      summary: List Inbox items
-      tags:
-      - inbox
   /api/v1/get_items:
     get:
       description: Returns paginated items for the authenticated user. Supports cursor-based
@@ -599,6 +540,10 @@ paths:
       - description: Pagination cursor (item ID)
         in: query
         name: cursor
+        type: integer
+      - description: Only return items from this owned feed
+        in: query
+        name: feed_id
         type: integer
       produces:
       - application/json
@@ -619,50 +564,6 @@ paths:
       summary: Get items
       tags:
       - items
-  /api/v1/inbox/items/{item_id}/archive:
-    post:
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/models.Delivery'
-        "400":
-          description: ""
-        "401":
-          description: ""
-        "404":
-          description: ""
-      security:
-      - BasicAuth: []
-      - BearerAuth: []
-      summary: Archive an Inbox item
-      tags:
-      - inbox
-  /api/v1/inbox/items/{item_id}/read:
-    post:
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/models.Delivery'
-        "400":
-          description: ""
-        "401":
-          description: ""
-        "404":
-          description: ""
-        "409":
-          description: ""
-      security:
-      - BasicAuth: []
-      - BearerAuth: []
-      summary: Mark an Inbox item as read
-      tags:
-      - inbox
   /api/v1/item:
     get:
       description: Returns a single item with its parent feed for the authenticated
@@ -725,8 +626,8 @@ paths:
     post:
       consumes:
       - application/json
-      description: Atomically creates an independent item clone and delivery. Network
-        retries must reuse Idempotency-Key.
+      description: Atomically creates an independent item clone and delivery. The
+        clone is read through the normal feed APIs. Network retries must reuse Idempotency-Key.
       parameters:
       - description: Client-generated retry key
         in: header
@@ -767,9 +668,9 @@ paths:
       security:
       - BasicAuth: []
       - BearerAuth: []
-      summary: Share an item into another user's Inbox
+      summary: Share an item into another user's Inbox feed
       tags:
-      - inbox
+      - feeds
 securityDefinitions:
   BasicAuth:
     type: basic

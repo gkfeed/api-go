@@ -47,16 +47,13 @@ func InitCoreSchema() error {
 			recipient_user_id INTEGER NOT NULL,
 			cloned_item_id INTEGER NOT NULL UNIQUE,
 			note TEXT,
-			state TEXT NOT NULL DEFAULT 'unread' CHECK (state IN ('unread', 'read', 'archived')),
 			idempotency_key TEXT NOT NULL,
 			request_hash TEXT NOT NULL,
 			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			read_at DATETIME,
-			archived_at DATETIME,
 			UNIQUE(sender_user_id, idempotency_key)
 		)`,
 		"CREATE UNIQUE INDEX IF NOT EXISTS one_inbox_per_user ON feed(user_id) WHERE type = 'inbox'",
-		"CREATE INDEX IF NOT EXISTS inbox_deliveries_recipient_state ON inbox_deliveries(recipient_user_id, state, created_at DESC)",
+		"CREATE INDEX IF NOT EXISTS inbox_deliveries_recipient ON inbox_deliveries(recipient_user_id, created_at DESC)",
 	}
 	for _, statement := range schema {
 		if _, err := database.Exec(statement); err != nil {

@@ -3,6 +3,7 @@ package handlers
 import "net/http"
 
 var feedTypes = [...]string{
+	"inbox",
 	"web",
 	"tiktok",
 	"kinogo",
@@ -35,7 +36,7 @@ var feedTypes = [...]string{
 }
 
 // @Summary      List feed types
-// @Description  Returns all feed type identifiers supported by the parser.
+// @Description  Returns all feed type identifiers available to the API. Inbox is an internal feed and is not parser-backed.
 // @Tags         feeds
 // @Produce      json
 // @Success      200  {array}  string

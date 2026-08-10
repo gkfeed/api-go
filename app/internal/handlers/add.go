@@ -8,7 +8,7 @@ import (
 )
 
 // @Summary      Add feed
-// @Description  Adds a new RSS/YouTube/TikTok feed for the authenticated user.
+// @Description  Adds a feed for the authenticated user. Type inbox creates or returns the user's single Inbox feed.
 // @Tags         feeds
 // @Accept       json
 // @Produce      json
@@ -31,11 +31,11 @@ func HandleAddFeed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	feed, err := db.AddFeed(feedInput, user.ID)
+	feed, created, err := db.AddFeedWithStatus(feedInput, user.ID)
 	if err != nil {
 		writeInternalServerError(w, err)
 		return
 	}
 
-	writeJSON(w, feedMutationResponse{Created: true, Item: feed})
+	writeJSON(w, feedMutationResponse{Created: created, Item: feed})
 }

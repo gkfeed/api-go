@@ -27,6 +27,7 @@ func TestHandleListFeedTypes(t *testing.T) {
 	}
 
 	want := []string{
+		"inbox",
 		"web",
 		"tiktok",
 		"kinogo",
