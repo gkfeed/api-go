@@ -41,6 +41,22 @@ func InitCoreSchema() error {
 		"CREATE TABLE IF NOT EXISTS feed (id INTEGER PRIMARY KEY, title TEXT, url TEXT, type TEXT, user_id INTEGER)",
 		"CREATE TABLE IF NOT EXISTS item (id INTEGER PRIMARY KEY, feed_id INTEGER, title TEXT, text TEXT, date DATETIME, link TEXT)",
 		"CREATE TABLE IF NOT EXISTS deleted_items (user_id INTEGER, item_id INTEGER)",
+		`CREATE TABLE IF NOT EXISTS inbox_deliveries (
+			id TEXT PRIMARY KEY,
+			sender_user_id INTEGER NOT NULL,
+			recipient_user_id INTEGER NOT NULL,
+			cloned_item_id INTEGER NOT NULL UNIQUE,
+			note TEXT,
+			state TEXT NOT NULL DEFAULT 'unread' CHECK (state IN ('unread', 'read', 'archived')),
+			idempotency_key TEXT NOT NULL,
+			request_hash TEXT NOT NULL,
+			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			read_at DATETIME,
+			archived_at DATETIME,
+			UNIQUE(sender_user_id, idempotency_key)
+		)`,
+		"CREATE UNIQUE INDEX IF NOT EXISTS one_inbox_per_user ON feed(user_id) WHERE type = 'inbox'",
+		"CREATE INDEX IF NOT EXISTS inbox_deliveries_recipient_state ON inbox_deliveries(recipient_user_id, state, created_at DESC)",
 	}
 	for _, statement := range schema {
 		if _, err := database.Exec(statement); err != nil {

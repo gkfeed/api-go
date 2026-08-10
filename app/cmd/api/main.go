@@ -76,6 +76,11 @@ func newHandler(configuration config.Config) http.Handler {
 	api.HandleFunc("/add_deleted_items", authenticate(handlers.HandleAddDeletedItems)).Methods(http.MethodPost)
 	api.HandleFunc("/item", authenticate(handlers.HandleGetItemByID)).Methods(http.MethodGet)
 	api.HandleFunc("/get_items", authenticate(handlers.HandleGetItems)).Methods(http.MethodGet)
+	api.HandleFunc("/feeds/me/inbox", authenticate(handlers.HandleCreateInbox)).Methods(http.MethodPost)
+	api.HandleFunc("/feeds/me/inbox/items", authenticate(handlers.HandleGetInboxItems)).Methods(http.MethodGet)
+	api.HandleFunc("/shares", authenticate(handlers.HandleShareItem)).Methods(http.MethodPost)
+	api.HandleFunc("/inbox/items/{item_id}/read", authenticate(handlers.HandleReadInboxItem)).Methods(http.MethodPost)
+	api.HandleFunc("/inbox/items/{item_id}/archive", authenticate(handlers.HandleArchiveInboxItem)).Methods(http.MethodPost)
 
 	authRouter := api.PathPrefix("/auth").Subrouter()
 	authRouter.HandleFunc("/me", authenticate(handlers.HandleMe)).Methods(http.MethodGet)

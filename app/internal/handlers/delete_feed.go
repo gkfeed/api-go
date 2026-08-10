@@ -18,6 +18,7 @@ import (
 // @Failure      400
 // @Failure      401
 // @Failure      404
+// @Failure      409
 // @Failure      500
 // @Router       /api/v1/delete [delete]
 func HandleDeleteFeed(w http.ResponseWriter, r *http.Request) {
@@ -38,6 +39,10 @@ func HandleDeleteFeed(w http.ResponseWriter, r *http.Request) {
 	}
 	if feed.UserID != user.ID {
 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		return
+	}
+	if feed.Type == "inbox" {
+		http.Error(w, "Inbox feeds cannot be deleted", http.StatusConflict)
 		return
 	}
 	if err := db.DeleteFeedByID(id); err != nil {

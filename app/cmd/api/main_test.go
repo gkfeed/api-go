@@ -7,6 +7,8 @@ import (
 	"net/http/httptest"
 	"path/filepath"
 	"slices"
+	"strconv"
+	"strings"
 	"testing"
 
 	"gkfeed/api/internal/config"
@@ -178,5 +180,132 @@ func TestFeedTypesRouteIsPublic(t *testing.T) {
 	}
 	if !slices.Contains(feedTypes, "web") || !slices.Contains(feedTypes, "spoti:playlist") {
 		t.Fatalf("GET /api/v1/feed_types returned unexpected feed types: %#v", feedTypes)
+	}
+}
+
+func TestInboxRoutes(t *testing.T) {
+	databasePath := filepath.Join(t.TempDir(), "db.sqlite")
+	db.Configure(databasePath)
+	t.Cleanup(func() { db.Configure("") })
+	if err := db.RunMigrations(); err != nil {
+		t.Fatalf("RunMigrations() returned error: %v", err)
+	}
+
+	database, err := sql.Open("sqlite3", databasePath)
+	if err != nil {
+		t.Fatalf("open test database: %v", err)
+	}
+	_, err = database.Exec(`
+		INSERT INTO users (id, name, hashed_password) VALUES
+			(1, 'sender', 'sender-password'),
+			(2, 'recipient', 'recipient-password');
+		INSERT INTO feed (id, title, url, type, user_id)
+			VALUES (10, 'Source', 'https://example.com/feed', 'web', 1);
+		INSERT INTO item (id, feed_id, title, text, date, link)
+			VALUES (20, 10, 'An item', 'Useful text', '2026-08-10T10:00:00Z', 'https://example.com/item')`)
+	database.Close()
+	if err != nil {
+		t.Fatalf("insert test fixtures: %v", err)
+	}
+	if err := db.RunMigrations(); err != nil {
+		t.Fatalf("RunMigrations() after user insert returned error: %v", err)
+	}
+
+	handler := newHandler(config.Config{})
+	doRequest := func(method, path, username, password, body, key string) *httptest.ResponseRecorder {
+		t.Helper()
+		request := httptest.NewRequest(method, path, strings.NewReader(body))
+		request.SetBasicAuth(username, password)
+		if body != "" {
+			request.Header.Set("Content-Type", "application/json")
+		}
+		if key != "" {
+			request.Header.Set("Idempotency-Key", key)
+		}
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, request)
+		return response
+	}
+
+	shareBody := `{"item_id":20,"recipient_user_id":2,"note":"Read this"}`
+	response := doRequest(http.MethodPost, "/api/v1/shares", "sender", "sender-password", shareBody, "share-route-test")
+	if response.Code != http.StatusNotFound {
+		t.Fatalf("share before Inbox creation status = %d, want %d", response.Code, http.StatusNotFound)
+	}
+
+	response = doRequest(http.MethodPost, "/api/v1/feeds/me/inbox", "recipient", "recipient-password", "", "")
+	if response.Code != http.StatusCreated {
+		t.Fatalf("create Inbox status = %d, want %d: %s", response.Code, http.StatusCreated, response.Body.String())
+	}
+	var createdInbox struct {
+		ID int `json:"id"`
+	}
+	if err := json.NewDecoder(response.Body).Decode(&createdInbox); err != nil {
+		t.Fatalf("decode Inbox creation response: %v", err)
+	}
+	response = doRequest(http.MethodDelete, "/api/v1/delete?id="+strconv.Itoa(createdInbox.ID), "recipient", "recipient-password", "", "")
+	if response.Code != http.StatusConflict {
+		t.Fatalf("delete Inbox status = %d, want %d", response.Code, http.StatusConflict)
+	}
+	response = doRequest(http.MethodPost, "/api/v1/feeds/me/inbox", "recipient", "recipient-password", "", "")
+	if response.Code != http.StatusOK {
+		t.Fatalf("repeat Inbox creation status = %d, want %d", response.Code, http.StatusOK)
+	}
+
+	response = doRequest(http.MethodPost, "/api/v1/shares", "sender", "sender-password", shareBody, "share-route-test")
+	if response.Code != http.StatusCreated {
+		t.Fatalf("share status = %d, want %d: %s", response.Code, http.StatusCreated, response.Body.String())
+	}
+	var createdDelivery struct {
+		ID     string `json:"delivery_id"`
+		ItemID int    `json:"item_id"`
+	}
+	if err := json.NewDecoder(response.Body).Decode(&createdDelivery); err != nil {
+		t.Fatalf("decode share response: %v", err)
+	}
+	if createdDelivery.ID == "" || createdDelivery.ItemID == 0 || createdDelivery.ItemID == 20 {
+		t.Fatalf("share response = %#v, want delivery with a cloned item", createdDelivery)
+	}
+
+	response = doRequest(http.MethodPost, "/api/v1/shares", "sender", "sender-password", shareBody, "share-route-test")
+	if response.Code != http.StatusOK {
+		t.Fatalf("share retry status = %d, want %d", response.Code, http.StatusOK)
+	}
+	var retryDelivery struct {
+		ID string `json:"delivery_id"`
+	}
+	if err := json.NewDecoder(response.Body).Decode(&retryDelivery); err != nil {
+		t.Fatalf("decode retry response: %v", err)
+	}
+	if retryDelivery.ID != createdDelivery.ID {
+		t.Fatalf("share retry delivery ID = %q, want %q", retryDelivery.ID, createdDelivery.ID)
+	}
+
+	response = doRequest(http.MethodGet, "/api/v1/feeds/me/inbox/items?state=unread", "recipient", "recipient-password", "", "")
+	if response.Code != http.StatusOK {
+		t.Fatalf("list Inbox status = %d, want %d: %s", response.Code, http.StatusOK, response.Body.String())
+	}
+	var inbox struct {
+		Items []json.RawMessage `json:"items"`
+	}
+	if err := json.NewDecoder(response.Body).Decode(&inbox); err != nil {
+		t.Fatalf("decode Inbox response: %v", err)
+	}
+	if len(inbox.Items) != 1 {
+		t.Fatalf("Inbox contains %d items, want 1", len(inbox.Items))
+	}
+
+	itemPath := "/api/v1/inbox/items/" + strconv.Itoa(createdDelivery.ItemID)
+	response = doRequest(http.MethodPost, itemPath+"/read", "sender", "sender-password", "", "")
+	if response.Code != http.StatusNotFound {
+		t.Fatalf("sender reading recipient item status = %d, want %d", response.Code, http.StatusNotFound)
+	}
+	response = doRequest(http.MethodPost, itemPath+"/read", "recipient", "recipient-password", "", "")
+	if response.Code != http.StatusOK {
+		t.Fatalf("mark Inbox item read status = %d, want %d", response.Code, http.StatusOK)
+	}
+	response = doRequest(http.MethodPost, itemPath+"/archive", "recipient", "recipient-password", "", "")
+	if response.Code != http.StatusOK {
+		t.Fatalf("archive Inbox item status = %d, want %d", response.Code, http.StatusOK)
 	}
 }
