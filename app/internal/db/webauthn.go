@@ -14,8 +14,6 @@ func InitWebAuthnSchema() error {
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
-	defer database.Close()
-
 	_, err = database.Exec(`CREATE TABLE IF NOT EXISTS webauthn_credentials (
 		id BLOB PRIMARY KEY,
 		user_id INTEGER NOT NULL,
@@ -35,8 +33,6 @@ func AddWebAuthnCredential(userID int, credential webauthn.Credential, name stri
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
-	defer database.Close()
-
 	data, err := json.Marshal(credential)
 	if err != nil {
 		return fmt.Errorf("marshal credential: %w", err)
@@ -57,8 +53,6 @@ func UpdateWebAuthnCredential(credential webauthn.Credential) error {
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
-	defer database.Close()
-
 	data, err := json.Marshal(credential)
 	if err != nil {
 		return fmt.Errorf("marshal credential: %w", err)
@@ -79,8 +73,6 @@ func GetWebAuthnCredentialsByUserID(userID int) ([]webauthn.Credential, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open database: %w", err)
 	}
-	defer database.Close()
-
 	rows, err := database.Query("SELECT credential FROM webauthn_credentials WHERE user_id = ?", userID)
 	if err != nil {
 		return nil, fmt.Errorf("query webauthn credentials: %w", err)
@@ -110,8 +102,6 @@ func GetWebAuthnUserIDByCredentialID(credentialID []byte) (int, error) {
 	if err != nil {
 		return 0, fmt.Errorf("open database: %w", err)
 	}
-	defer database.Close()
-
 	var userID int
 	err = database.QueryRow(
 		"SELECT user_id FROM webauthn_credentials WHERE id = ?",
@@ -131,8 +121,6 @@ func DeleteWebAuthnCredential(credentialID []byte, userID int) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("open database: %w", err)
 	}
-	defer database.Close()
-
 	result, err := database.Exec(
 		"DELETE FROM webauthn_credentials WHERE id = ? AND user_id = ?",
 		credentialID, userID,
@@ -152,8 +140,6 @@ func ListUserWebAuthnCredentials(userID int) ([]WebAuthnCredentialInfo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open database: %w", err)
 	}
-	defer database.Close()
-
 	rows, err := database.Query(
 		"SELECT id, name, created_at, last_used_at FROM webauthn_credentials WHERE user_id = ? ORDER BY created_at DESC",
 		userID,

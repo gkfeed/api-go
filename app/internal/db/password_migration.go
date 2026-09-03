@@ -13,8 +13,6 @@ func MigratePasswords() error {
 	if err != nil {
 		return err
 	}
-	defer database.Close()
-
 	transaction, err := database.Begin()
 	if err != nil {
 		return fmt.Errorf("begin password migration: %w", err)

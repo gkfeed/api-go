@@ -3,14 +3,20 @@ package db
 import (
 	"database/sql"
 	"errors"
-
-	_ "github.com/mattn/go-sqlite3"
+	"sync"
 )
 
-var dbPath string
+var (
+	databaseMu sync.RWMutex
+	database   *sql.DB
+)
 
-func Configure(path string) {
-	dbPath = path
+// Configure temporarily wires legacy auth persistence to the shared pool.
+// TODO: move auth repositories to constructor injection.
+func Configure(db *sql.DB) {
+	databaseMu.Lock()
+	database = db
+	databaseMu.Unlock()
 }
 
 func RunMigrations() error {
@@ -34,13 +40,8 @@ func InitCoreSchema() error {
 	if err != nil {
 		return err
 	}
-	defer database.Close()
-
 	schema := []string{
 		"CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT, hashed_password TEXT)",
-		"CREATE TABLE IF NOT EXISTS feed (id INTEGER PRIMARY KEY, title TEXT, url TEXT, type TEXT, user_id INTEGER)",
-		"CREATE TABLE IF NOT EXISTS item (id INTEGER PRIMARY KEY, feed_id INTEGER, title TEXT, text TEXT, date DATETIME, link TEXT)",
-		"CREATE TABLE IF NOT EXISTS deleted_items (user_id INTEGER, item_id INTEGER)",
 	}
 	for _, statement := range schema {
 		if _, err := database.Exec(statement); err != nil {
@@ -51,8 +52,13 @@ func InitCoreSchema() error {
 }
 
 func getDB() (*sql.DB, error) {
-	if dbPath == "" {
+	databaseMu.RLock()
+	defer databaseMu.RUnlock()
+	if database == nil {
 		return nil, errors.New("database is not configured")
 	}
-	return sql.Open("sqlite3", dbPath)
+	return database, nil
 }
+
+// ConfiguredDB exists only while legacy auth storage still uses package-level wiring.
+func ConfiguredDB() (*sql.DB, error) { return getDB() }

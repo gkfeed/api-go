@@ -13,8 +13,6 @@ func GetUserFromDB(name string) (models.User, error) {
 	if err != nil {
 		return models.User{}, fmt.Errorf("open database: %w", err)
 	}
-	defer database.Close()
-
 	var user models.User
 	err = database.QueryRow(
 		"SELECT * FROM users WHERE name = ?",
@@ -35,8 +33,6 @@ func GetUserFromDBByID(id int) (models.User, error) {
 	if err != nil {
 		return models.User{}, fmt.Errorf("open database: %w", err)
 	}
-	defer database.Close()
-
 	var user models.User
 	err = database.QueryRow(
 		"SELECT id, name, hashed_password FROM users WHERE id = ?",

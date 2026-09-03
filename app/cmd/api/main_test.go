@@ -11,6 +11,7 @@ import (
 
 	"gkfeed/api/internal/config"
 	"gkfeed/api/internal/db"
+	storage "gkfeed/api/internal/storage/sqlite"
 )
 
 func TestDeleteRouteDoesNotAllowGet(t *testing.T) {
@@ -47,18 +48,17 @@ func TestSwaggerRoutesAreUnderAPI(t *testing.T) {
 
 func TestMeRouteAcceptsBasicAuth(t *testing.T) {
 	databasePath := filepath.Join(t.TempDir(), "db.sqlite")
-	db.Configure(databasePath)
-	t.Cleanup(func() { db.Configure("") })
-
-	if err := db.RunMigrations(); err != nil {
-		t.Fatalf("RunMigrations() returned error: %v", err)
-	}
-
 	database, err := sql.Open("sqlite3", databasePath)
 	if err != nil {
 		t.Fatalf("open test database: %v", err)
 	}
 	defer database.Close()
+	db.Configure(database)
+	t.Cleanup(func() { db.Configure(nil) })
+
+	if err := db.RunMigrations(); err != nil {
+		t.Fatalf("RunMigrations() returned error: %v", err)
+	}
 
 	if _, err := database.Exec(
 		"INSERT INTO users (id, name, hashed_password) VALUES (?, ?, ?)",
@@ -94,18 +94,20 @@ func TestMeRouteAcceptsBasicAuth(t *testing.T) {
 
 func TestItemRouteRequiresAuthenticationAndOwner(t *testing.T) {
 	databasePath := filepath.Join(t.TempDir(), "db.sqlite")
-	db.Configure(databasePath)
-	t.Cleanup(func() { db.Configure("") })
-
-	if err := db.RunMigrations(); err != nil {
-		t.Fatalf("RunMigrations() returned error: %v", err)
-	}
-
 	database, err := sql.Open("sqlite3", databasePath)
 	if err != nil {
 		t.Fatalf("open test database: %v", err)
 	}
 	defer database.Close()
+	db.Configure(database)
+	t.Cleanup(func() { db.Configure(nil) })
+
+	if err := db.RunMigrations(); err != nil {
+		t.Fatalf("RunMigrations() returned error: %v", err)
+	}
+	if err := storage.InitSchema(t.Context(), database); err != nil {
+		t.Fatalf("InitSchema() returned error: %v", err)
+	}
 
 	for _, user := range []struct {
 		id       int

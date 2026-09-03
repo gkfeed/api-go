@@ -13,8 +13,6 @@ func InitRefreshTokenSchema() error {
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
-	defer database.Close()
-
 	_, err = database.Exec(`CREATE TABLE IF NOT EXISTS refresh_tokens (
 		id TEXT PRIMARY KEY,
 		user_id INTEGER NOT NULL,
@@ -32,8 +30,6 @@ func StoreRefreshToken(token models.RefreshToken) error {
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
-	defer database.Close()
-
 	_, err = database.Exec(
 		"INSERT INTO refresh_tokens (id, user_id, expires_at) VALUES (?, ?, ?)",
 		token.ID, token.UserID, token.ExpiresAt,
@@ -49,8 +45,6 @@ func GetRefreshToken(id string) (models.RefreshToken, error) {
 	if err != nil {
 		return models.RefreshToken{}, fmt.Errorf("open database: %w", err)
 	}
-	defer database.Close()
-
 	var token models.RefreshToken
 	err = database.QueryRow(
 		"SELECT id, user_id, expires_at, created_at FROM refresh_tokens WHERE id = ?",
@@ -70,8 +64,6 @@ func DeleteRefreshToken(id string) error {
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
-	defer database.Close()
-
 	_, err = database.Exec("DELETE FROM refresh_tokens WHERE id = ?", id)
 	if err != nil {
 		return fmt.Errorf("delete refresh token: %w", err)
@@ -84,8 +76,6 @@ func DeleteUserRefreshTokens(userID int) error {
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
-	defer database.Close()
-
 	_, err = database.Exec("DELETE FROM refresh_tokens WHERE user_id = ?", userID)
 	if err != nil {
 		return fmt.Errorf("delete user refresh tokens: %w", err)

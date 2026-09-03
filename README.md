@@ -12,6 +12,11 @@ GKFeed is a small Go HTTP API that stores feed subscriptions and items in SQLite
 
 The default development configuration expects the database at `data/db.sqlite` from the repository root.
 
+> **Back up the SQLite database before installing this version.** On startup,
+> the application permanently deletes items represented by valid legacy
+> `deleted_items` tombstones and then drops the `deleted_items` table. This
+> migration is automatic, transactional, idempotent, and irreversible.
+
 ```sh
 make dev
 ```
@@ -58,8 +63,14 @@ Swagger UI is available at `/api/swagger/index.html`.
 | `GET` | `/api/v1/feed` | Basic | Return the user's RSS feed |
 | `POST` | `/api/v1/add` | Basic | Add a feed |
 | `POST` | `/api/v1/add_lazy` | Basic | Add a feed inferred from its URL |
-| `DELETE` | `/api/v1/delete?id=<id>` | Basic | Delete a feed |
-| `POST` | `/api/v1/add_deleted_items` | Basic | Hide items for the user |
+| `DELETE` | `/api/v1/delete?id=<id>` | Basic or Bearer | Permanently delete a feed and all its items |
+| `DELETE` | `/api/v1/items/{id}` | Basic or Bearer | Permanently delete an owned item |
+| `POST` | `/api/v1/add_deleted_items` | Basic or Bearer | Deprecated compatibility stub; returns `410 Gone` |
 | `GET` | `/api/v1/get_items` | Basic | Return cursor-paginated items |
 | `GET` | `/api/v1/item?id=<id>` | Basic or Bearer | Return the authenticated user's item and its feed |
 | `GET` | `/api/v1/auth/me` | Basic or Bearer | Return the authenticated user |
+
+The deprecated `/api/v1/add_deleted_items` endpoint no longer reads its body or
+changes data. Authenticated requests receive a JSON `410 Gone` response pointing
+clients to `DELETE /api/v1/items/{id}`; unauthenticated requests still receive
+`401 Unauthorized`.
