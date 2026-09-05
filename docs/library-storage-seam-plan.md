@@ -1,5 +1,9 @@
 # Library storage seam: контекст и согласованный план
 
+Historical plan for the SQLite storage seam. PostgreSQL runtime configuration,
+migration ownership, and deployment requirements now follow [README](../README.md)
+and [the PostgreSQL follow-ups](../tasks/postgresql-contract-follow-ups.md).
+
 ## Статус документа
 
 Этот документ фиксирует решения, согласованные перед реализацией. Код по этому плану ещё не менялся. Документ предназначен как самостоятельный контекст для агента, который будет выполнять работу.

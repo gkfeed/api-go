@@ -51,5 +51,5 @@ func (h *LibraryHandler) HandleAddFeedLazy(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	writeJSON(w, feedMutationResponse{Created: true, Item: toFeedDTO(feed)})
+	writeJSON(w, feedMutationResponse{Created: feed.Created, Item: toFeedDTO(feed.Feed)})
 }

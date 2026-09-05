@@ -7,9 +7,10 @@ import (
 )
 
 func TestLoadUsesEnvironment(t *testing.T) {
+	t.Setenv(databaseEnvironmentVariable, "postgres://localhost/gkfeed")
 	const jwtSecret = "a-random-secret-with-at-least-32-bytes"
 	t.Setenv(addressEnvironmentVariable, "127.0.0.1:9000")
-	t.Setenv(databaseEnvironmentVariable, "/tmp/gkfeed.sqlite")
+	t.Setenv(databaseEnvironmentVariable, "postgres://localhost/gkfeed")
 	t.Setenv(allowedOriginsEnvironmentVariable, "https://one.example, https://two.example")
 	t.Setenv(jwtSecretEnvironmentVariable, jwtSecret)
 
@@ -21,8 +22,8 @@ func TestLoadUsesEnvironment(t *testing.T) {
 	if configuration.Address != "127.0.0.1:9000" {
 		t.Fatalf("Address = %q, want %q", configuration.Address, "127.0.0.1:9000")
 	}
-	if configuration.DatabasePath != "/tmp/gkfeed.sqlite" {
-		t.Fatalf("DatabasePath = %q, want %q", configuration.DatabasePath, "/tmp/gkfeed.sqlite")
+	if configuration.DatabaseURL != "postgres://localhost/gkfeed" {
+		t.Fatalf("DatabaseURL = %q, want %q", configuration.DatabaseURL, "postgres://localhost/gkfeed")
 	}
 	wantOrigins := []string{"https://one.example", "https://two.example"}
 	if !reflect.DeepEqual(configuration.AllowedOrigins, wantOrigins) {
@@ -34,6 +35,7 @@ func TestLoadUsesEnvironment(t *testing.T) {
 }
 
 func TestLoadReturnsIndependentDefaultOrigins(t *testing.T) {
+	t.Setenv(databaseEnvironmentVariable, "postgres://localhost/gkfeed")
 	t.Setenv(allowedOriginsEnvironmentVariable, "")
 	t.Setenv(jwtSecretEnvironmentVariable, "a-random-secret-with-at-least-32-bytes")
 	first, err := Load()
@@ -52,6 +54,7 @@ func TestLoadReturnsIndependentDefaultOrigins(t *testing.T) {
 }
 
 func TestLoadRejectsMissingJWTSecret(t *testing.T) {
+	t.Setenv(databaseEnvironmentVariable, "postgres://localhost/gkfeed")
 	t.Setenv(jwtSecretEnvironmentVariable, "")
 
 	_, err := Load()
@@ -65,6 +68,7 @@ func TestLoadRejectsMissingJWTSecret(t *testing.T) {
 }
 
 func TestLoadRejectsShortJWTSecret(t *testing.T) {
+	t.Setenv(databaseEnvironmentVariable, "postgres://localhost/gkfeed")
 	t.Setenv(jwtSecretEnvironmentVariable, strings.Repeat("x", minJWTSecretLength-1))
 
 	_, err := Load()
@@ -75,6 +79,7 @@ func TestLoadRejectsShortJWTSecret(t *testing.T) {
 }
 
 func TestLoadAcceptsMinimumLengthJWTSecret(t *testing.T) {
+	t.Setenv(databaseEnvironmentVariable, "postgres://localhost/gkfeed")
 	t.Setenv(jwtSecretEnvironmentVariable, strings.Repeat("x", minJWTSecretLength))
 
 	configuration, err := Load()
@@ -84,5 +89,13 @@ func TestLoadAcceptsMinimumLengthJWTSecret(t *testing.T) {
 	}
 	if len(configuration.JWTSecret) != minJWTSecretLength {
 		t.Fatalf("JWTSecret length = %d, want %d", len(configuration.JWTSecret), minJWTSecretLength)
+	}
+}
+
+func TestLoadRejectsMissingDatabaseURL(t *testing.T) {
+	t.Setenv(jwtSecretEnvironmentVariable, strings.Repeat("x", minJWTSecretLength))
+	t.Setenv(databaseEnvironmentVariable, "")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), databaseEnvironmentVariable) {
+		t.Fatalf("error = %v", err)
 	}
 }

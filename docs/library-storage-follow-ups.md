@@ -1,5 +1,9 @@
 # Library storage follow-ups
 
+Historical plan for the SQLite storage seam. PostgreSQL runtime configuration,
+migration ownership, and deployment requirements now follow [README](../README.md)
+and [the PostgreSQL follow-ups](../tasks/postgresql-contract-follow-ups.md).
+
 ## Remove the deprecated hide route
 
 Remove `POST /api/v1/add_deleted_items` after client telemetry or an explicit

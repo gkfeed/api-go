@@ -18,12 +18,12 @@ import (
 	"gkfeed/api/internal/handlers"
 	"gkfeed/api/internal/library"
 	"gkfeed/api/internal/services"
-	storage "gkfeed/api/internal/storage/sqlite"
+	storage "gkfeed/api/internal/storage/postgres"
 
 	_ "gkfeed/api/cmd/api/docs"
 
 	"github.com/gorilla/mux"
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/rs/cors"
 	httpSwagger "github.com/swaggo/http-swagger/v2"
 )
@@ -55,13 +55,15 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("configuration: %w", err)
 	}
-	database, err := sql.Open("sqlite3", configuration.DatabasePath)
+	database, err := sql.Open("pgx", configuration.DatabaseURL)
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
-	database.SetMaxOpenConns(1)
+	database.SetMaxOpenConns(10)
 	defer database.Close()
-	if err := database.Ping(); err != nil {
+	startupCtx, cancelStartup := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancelStartup()
+	if err := database.PingContext(startupCtx); err != nil {
 		return fmt.Errorf("connect database: %w", err)
 	}
 
@@ -69,19 +71,9 @@ func run() error {
 	db.Configure(database)
 	defer db.Configure(nil)
 
-	if err = db.RunMigrations(); err != nil {
-		return fmt.Errorf("auth database migration: %w", err)
+	if err := storage.CheckSchema(startupCtx, database); err != nil {
+		return err
 	}
-	ctx := context.Background()
-	if err = storage.InitSchema(ctx, database); err != nil {
-		return fmt.Errorf("library database migration: %w", err)
-	}
-	stats, err := storage.MigrateDeletedItems(ctx, database)
-	if err != nil {
-		return fmt.Errorf("deleted-items migration: %w", err)
-	}
-	log.Printf("deleted-items migration: deleted=%d ignored=%d", stats.Deleted, stats.Ignored)
-
 	libraryHandler := buildLibraryHandler(database)
 
 	server := &http.Server{
@@ -183,8 +175,8 @@ type unavailableLibraryService struct{}
 func (unavailableLibraryService) ListFeeds(context.Context, int) ([]library.Feed, error) {
 	return nil, errors.New("library storage is unavailable")
 }
-func (unavailableLibraryService) AddFeed(context.Context, int, library.CreateFeedInput) (library.Feed, error) {
-	return library.Feed{}, errors.New("library storage is unavailable")
+func (unavailableLibraryService) AddFeed(context.Context, int, library.CreateFeedInput) (library.AddFeedResult, error) {
+	return library.AddFeedResult{}, errors.New("library storage is unavailable")
 }
 func (unavailableLibraryService) DeleteFeed(context.Context, int, int) error {
 	return errors.New("library storage is unavailable")

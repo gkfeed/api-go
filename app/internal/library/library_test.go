@@ -11,9 +11,11 @@ type fakeFeeds struct {
 	err  error
 }
 
-func (f fakeFeeds) List(context.Context, int) ([]Feed, error)             { return f.list, f.err }
-func (fakeFeeds) Add(context.Context, int, CreateFeedInput) (Feed, error) { return Feed{}, nil }
-func (fakeFeeds) Delete(context.Context, int, int) error                  { return nil }
+func (f fakeFeeds) List(context.Context, int) ([]Feed, error) { return f.list, f.err }
+func (fakeFeeds) Add(context.Context, int, CreateFeedInput) (AddFeedResult, error) {
+	return AddFeedResult{}, nil
+}
+func (fakeFeeds) Delete(context.Context, int, int) error { return nil }
 
 type fakeItems struct {
 	list      []Item

@@ -1,4 +1,4 @@
-package sqlite
+package postgres
 
 import (
 	"context"
@@ -19,7 +19,7 @@ type FeedRepository struct{ db *sql.DB }
 func NewFeedRepository(db *sql.DB) *FeedRepository { return &FeedRepository{db: db} }
 
 func (r *FeedRepository) List(ctx context.Context, userID int) ([]library.Feed, error) {
-	rows, err := r.db.QueryContext(ctx, "SELECT "+feedColumns+" FROM feed WHERE user_id = ? ORDER BY id DESC", userID)
+	rows, err := r.db.QueryContext(ctx, "SELECT "+feedColumns+" FROM feed WHERE user_id = $1 ORDER BY id DESC", userID)
 	if err != nil {
 		return nil, fmt.Errorf("query feeds: %w", err)
 	}
@@ -39,19 +39,24 @@ func (r *FeedRepository) List(ctx context.Context, userID int) ([]library.Feed, 
 	return feeds, nil
 }
 
-func (r *FeedRepository) Add(ctx context.Context, userID int, input library.CreateFeedInput) (library.Feed, error) {
-	result, err := r.db.ExecContext(ctx,
-		"INSERT INTO feed (title, type, url, user_id) VALUES (?, ?, ?, ?)",
-		input.Title, input.Type, input.URL, userID,
-	)
-	if err != nil {
-		return library.Feed{}, fmt.Errorf("insert feed: %w", err)
+func (r *FeedRepository) Add(ctx context.Context, userID int, input library.CreateFeedInput) (library.AddFeedResult, error) {
+	feed, err := scanFeed(r.db.QueryRowContext(ctx,
+		"INSERT INTO feed (title, type, url, user_id) VALUES ($1, $2, $3, $4) ON CONFLICT (user_id, url, type) DO NOTHING RETURNING "+feedColumns,
+		input.Title, input.Type, input.URL, userID))
+	if err == nil {
+		return library.AddFeedResult{Feed: feed, Created: true}, nil
 	}
-	id, err := result.LastInsertId()
-	if err != nil {
-		return library.Feed{}, fmt.Errorf("get inserted feed ID: %w", err)
+	if !errors.Is(err, sql.ErrNoRows) {
+		return library.AddFeedResult{}, fmt.Errorf("insert feed: %w", err)
 	}
-	return library.Feed{ID: int(id), Title: input.Title, Type: input.Type, URL: input.URL, UserID: userID}, nil
+	// Use a separate statement so a concurrent insert that won the conflict
+	// is visible after it commits. A no-op UPDATE would require feed UPDATE
+	// privileges, which the infra application role intentionally does not have.
+	feed, err = scanFeed(r.db.QueryRowContext(ctx, "SELECT "+feedColumns+" FROM feed WHERE user_id = $1 AND url = $2 AND type = $3", userID, input.URL, input.Type))
+	if err != nil {
+		return library.AddFeedResult{}, fmt.Errorf("get existing feed: %w", err)
+	}
+	return library.AddFeedResult{Feed: feed}, nil
 }
 
 func (r *FeedRepository) Delete(ctx context.Context, userID, feedID int) error {
@@ -62,16 +67,16 @@ func (r *FeedRepository) Delete(ctx context.Context, userID, feedID int) error {
 	defer tx.Rollback()
 
 	var exists int
-	if err := tx.QueryRowContext(ctx, "SELECT 1 FROM feed WHERE id = ? AND user_id = ?", feedID, userID).Scan(&exists); err != nil {
+	if err := tx.QueryRowContext(ctx, "SELECT 1 FROM feed WHERE id = $1 AND user_id = $2", feedID, userID).Scan(&exists); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return library.ErrNotFound
 		}
 		return fmt.Errorf("find feed: %w", err)
 	}
-	if _, err := tx.ExecContext(ctx, "DELETE FROM item WHERE feed_id = ?", feedID); err != nil {
+	if _, err := tx.ExecContext(ctx, "DELETE FROM item WHERE feed_id = $1", feedID); err != nil {
 		return fmt.Errorf("delete feed items: %w", err)
 	}
-	result, err := tx.ExecContext(ctx, "DELETE FROM feed WHERE id = ? AND user_id = ?", feedID, userID)
+	result, err := tx.ExecContext(ctx, "DELETE FROM feed WHERE id = $1 AND user_id = $2", feedID, userID)
 	if err != nil {
 		return fmt.Errorf("delete feed: %w", err)
 	}
@@ -95,7 +100,7 @@ func NewItemRepository(db *sql.DB) *ItemRepository { return &ItemRepository{db: 
 func (r *ItemRepository) Get(ctx context.Context, userID, itemID int) (library.ItemDetails, error) {
 	row := r.db.QueryRowContext(ctx, `SELECT `+itemColumns+`, `+feedColumns+`
 		FROM item JOIN feed ON item.feed_id = feed.id
-		WHERE item.id = ? AND feed.user_id = ?`, itemID, userID)
+		WHERE item.id = $1 AND feed.user_id = $2`, itemID, userID)
 	item, feed, err := scanItemWithFeed(row)
 	if errors.Is(err, sql.ErrNoRows) {
 		return library.ItemDetails{}, library.ErrNotFound
@@ -109,26 +114,26 @@ func (r *ItemRepository) Get(ctx context.Context, userID, itemID int) (library.I
 func (r *ItemRepository) List(ctx context.Context, userID int) ([]library.Item, error) {
 	return r.list(ctx, `SELECT `+itemColumns+`
 		FROM item JOIN feed ON item.feed_id = feed.id
-		WHERE feed.user_id = ? ORDER BY item.id DESC`, userID)
+		WHERE feed.user_id = $1 ORDER BY item.id DESC`, userID)
 }
 
 func (r *ItemRepository) ListPage(ctx context.Context, userID int, cursor *int, limit int) ([]library.Item, error) {
 	query := `SELECT ` + itemColumns + `
 		FROM item JOIN feed ON item.feed_id = feed.id
-		WHERE feed.user_id = ?`
+		WHERE feed.user_id = $1`
 	args := []any{userID}
 	if cursor != nil {
-		query += " AND item.id < ?"
+		query += " AND item.id < $2"
 		args = append(args, *cursor)
 	}
-	query += " ORDER BY item.id DESC LIMIT ?"
+	query += fmt.Sprintf(" ORDER BY item.id DESC LIMIT $%d", len(args)+1)
 	args = append(args, limit)
 	return r.list(ctx, query, args...)
 }
 
 func (r *ItemRepository) Delete(ctx context.Context, userID, itemID int) error {
-	result, err := r.db.ExecContext(ctx, `DELETE FROM item WHERE id = ? AND EXISTS (
-		SELECT 1 FROM feed WHERE feed.id = item.feed_id AND feed.user_id = ?
+	result, err := r.db.ExecContext(ctx, `DELETE FROM item WHERE id = $1 AND EXISTS (
+		SELECT 1 FROM feed WHERE feed.id = item.feed_id AND feed.user_id = $2
 	)`, itemID, userID)
 	if err != nil {
 		return fmt.Errorf("delete item: %w", err)

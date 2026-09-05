@@ -21,8 +21,8 @@ func (f fakeResolver) Resolve(context.Context, string) (library.CreateFeedInput,
 }
 
 func TestHandleAddFeedLazy(t *testing.T) {
-	service := &fakeLibraryService{addFeed: func(_ context.Context, userID int, input library.CreateFeedInput) (library.Feed, error) {
-		return library.Feed{ID: 1, UserID: userID, Title: input.Title, Type: input.Type, URL: input.URL}, nil
+	service := &fakeLibraryService{addFeed: func(_ context.Context, userID int, input library.CreateFeedInput) (library.AddFeedResult, error) {
+		return library.AddFeedResult{Feed: library.Feed{ID: 1, UserID: userID, Title: input.Title, Type: input.Type, URL: input.URL}, Created: true}, nil
 	}}
 	handler := NewLibraryHandler(service, fakeResolver{library.CreateFeedInput{Title: "Test Feed", Type: "rss", URL: "https://example.com"}})
 	request := httptest.NewRequest(http.MethodPost, "/add-lazy", bytes.NewBufferString(`{"url":"https://example.com"}`))
@@ -42,8 +42,8 @@ func TestHandleAddFeedLazy(t *testing.T) {
 }
 
 func TestHandleAddFeedLazyReturnsServerErrorWhenInsertFails(t *testing.T) {
-	service := &fakeLibraryService{addFeed: func(context.Context, int, library.CreateFeedInput) (library.Feed, error) {
-		return library.Feed{}, errors.New("database unavailable")
+	service := &fakeLibraryService{addFeed: func(context.Context, int, library.CreateFeedInput) (library.AddFeedResult, error) {
+		return library.AddFeedResult{}, errors.New("database unavailable")
 	}}
 	handler := NewLibraryHandler(service, fakeResolver{library.CreateFeedInput{URL: "https://example.com"}})
 	request := httptest.NewRequest(http.MethodPost, "/add-lazy", bytes.NewBufferString(`{"url":"https://example.com"}`))

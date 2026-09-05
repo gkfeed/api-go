@@ -2,6 +2,7 @@ package repositorytest
 
 import (
 	"errors"
+	"sync"
 	"testing"
 
 	"gkfeed/api/internal/library"
@@ -18,6 +19,7 @@ type Factory func(t *testing.T) Fixture
 // Run exercises behavior shared by every library storage adapter.
 func Run(t *testing.T, factory Factory) {
 	t.Helper()
+	RunFeedCreation(t, factory)
 	t.Run("ownership ordering pagination and mutations", func(t *testing.T) {
 		fixture := factory(t)
 		feeds, items := fixture.Feeds, fixture.Items
@@ -90,6 +92,71 @@ func Run(t *testing.T, factory Factory) {
 			if _, err := items.Get(ctx, 1, id); !errors.Is(err, library.ErrNotFound) {
 				t.Fatalf("cascade item %d error = %v", id, err)
 			}
+		}
+	})
+}
+
+func RunFeedCreation(t *testing.T, factory Factory) {
+	t.Helper()
+	t.Run("feed identity", func(t *testing.T) {
+		feeds := factory(t).Feeds
+		input := library.CreateFeedInput{Title: "original", Type: "rss", URL: "https://same"}
+		first, err := feeds.Add(t.Context(), 1, input)
+		if err != nil || !first.Created {
+			t.Fatalf("first = %#v, %v", first, err)
+		}
+		for _, title := range []string{"original", "changed"} {
+			input.Title = title
+			repeat, err := feeds.Add(t.Context(), 1, input)
+			if err != nil || repeat.Created || repeat.Feed != first.Feed {
+				t.Fatalf("repeat = %#v, %v", repeat, err)
+			}
+		}
+		otherUser, err := feeds.Add(t.Context(), 2, input)
+		if err != nil || !otherUser.Created || otherUser.ID == first.ID {
+			t.Fatalf("other user = %#v, %v", otherUser, err)
+		}
+		input.Type = "web"
+		otherType, err := feeds.Add(t.Context(), 1, input)
+		if err != nil || !otherType.Created || otherType.ID == first.ID {
+			t.Fatalf("other type = %#v, %v", otherType, err)
+		}
+	})
+	t.Run("concurrent repeats", func(t *testing.T) {
+		feeds := factory(t).Feeds
+		const count = 12
+		results := make([]library.AddFeedResult, count)
+		errs := make([]error, count)
+		var wg sync.WaitGroup
+		start := make(chan struct{})
+		for i := range count {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				<-start
+				results[i], errs[i] = feeds.Add(t.Context(), 1, library.CreateFeedInput{Title: "same", Type: "rss", URL: "https://same"})
+			}()
+		}
+		close(start)
+		wg.Wait()
+		created := 0
+		for i, result := range results {
+			if errs[i] != nil {
+				t.Fatal(errs[i])
+			}
+			if result.Created {
+				created++
+			}
+			if result.ID == 0 || result.Feed != results[0].Feed {
+				t.Fatalf("result = %#v", result)
+			}
+		}
+		if created != 1 {
+			t.Fatalf("created = %d", created)
+		}
+		listed, err := feeds.List(t.Context(), 1)
+		if err != nil || len(listed) != 1 {
+			t.Fatalf("feeds = %#v, %v", listed, err)
 		}
 	})
 }

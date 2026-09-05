@@ -2,53 +2,12 @@ package db
 
 import (
 	"database/sql"
+	"github.com/go-webauthn/webauthn/webauthn"
 	"testing"
 
 	_ "github.com/mattn/go-sqlite3"
-	"gkfeed/api/internal/passwordhash"
+	"gkfeed/api/internal/testschema"
 )
-
-func TestMigratePasswords(t *testing.T) {
-	database := useTestDatabase(t)
-	if _, err := database.Exec("INSERT INTO users (id, name, hashed_password) VALUES (1, 'reader', 'secret')"); err != nil {
-		t.Fatal(err)
-	}
-	if err := RunMigrations(); err != nil {
-		t.Fatalf("RunMigrations() returned error: %v", err)
-	}
-	user, err := GetUserFromDB("reader")
-	if err != nil {
-		t.Fatalf("GetUserFromDB() returned error: %v", err)
-	}
-	if !passwordhash.ComparePassword(user.HashedPassword, "secret") {
-		t.Fatal("MigratePasswords() did not store a matching hash")
-	}
-	hash := user.HashedPassword
-	if err := RunMigrations(); err != nil {
-		t.Fatalf("second RunMigrations() returned error: %v", err)
-	}
-	user, _ = GetUserFromDB("reader")
-	if user.HashedPassword != hash {
-		t.Fatal("MigratePasswords() rehashed an encoded password")
-	}
-}
-
-func TestMigratePasswordsLeavesNullPasswordsAlone(t *testing.T) {
-	database := useTestDatabase(t)
-	if _, err := database.Exec("INSERT INTO users (id, name, hashed_password) VALUES (2, 'no-password', NULL)"); err != nil {
-		t.Fatal(err)
-	}
-	if err := RunMigrations(); err != nil {
-		t.Fatalf("RunMigrations() returned error: %v", err)
-	}
-	var password sql.NullString
-	if err := database.QueryRow("SELECT hashed_password FROM users WHERE id = 2").Scan(&password); err != nil {
-		t.Fatal(err)
-	}
-	if password.Valid {
-		t.Fatalf("password became %q", password.String)
-	}
-}
 
 func useTestDatabase(t *testing.T) *sql.DB {
 	t.Helper()
@@ -62,8 +21,46 @@ func useTestDatabase(t *testing.T) *sql.DB {
 		Configure(nil)
 		database.Close()
 	})
-	if err := RunMigrations(); err != nil {
+	testschema.Init(t, database)
+	return database
+}
+
+func TestNullPasswordLookups(t *testing.T) {
+	database := useTestDatabase(t)
+	if _, err := database.Exec("INSERT INTO users (id, name, hashed_password) VALUES (2, 'passwordless', NULL)"); err != nil {
 		t.Fatal(err)
 	}
-	return database
+	byName, err := GetUserFromDB("passwordless")
+	if err != nil {
+		t.Fatal(err)
+	}
+	byID, err := GetUserFromDBByID(2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if byName != byID || byID.ID != 2 || byID.HashedPassword.Valid {
+		t.Fatalf("users = %#v, %#v", byName, byID)
+	}
+}
+func TestWebAuthnLookupForPasswordlessUser(t *testing.T) {
+	database := useTestDatabase(t)
+	if _, err := database.Exec("INSERT INTO users (id, name, hashed_password) VALUES (2, 'passwordless', NULL)"); err != nil {
+		t.Fatal(err)
+	}
+	credential := webauthn.Credential{ID: []byte("passkey")}
+	if err := AddWebAuthnCredential(2, credential, "key"); err != nil {
+		t.Fatal(err)
+	}
+	id, err := GetWebAuthnUserIDByCredentialID(credential.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	user, err := GetUserFromDBByID(id)
+	if err != nil || user.ID != 2 || user.HashedPassword.Valid {
+		t.Fatalf("user = %#v, %v", user, err)
+	}
+	credentials, err := GetWebAuthnCredentialsByUserID(user.ID)
+	if err != nil || len(credentials) != 1 || string(credentials[0].ID) != "passkey" {
+		t.Fatalf("credentials = %#v, %v", credentials, err)
+	}
 }

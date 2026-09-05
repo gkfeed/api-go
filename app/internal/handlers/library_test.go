@@ -7,7 +7,7 @@ import (
 )
 
 type fakeLibraryService struct {
-	addFeed    func(context.Context, int, library.CreateFeedInput) (library.Feed, error)
+	addFeed    func(context.Context, int, library.CreateFeedInput) (library.AddFeedResult, error)
 	deleteFeed func(context.Context, int, int) error
 	deleteItem func(context.Context, int, int) error
 	listFeeds  []library.Feed
@@ -18,7 +18,7 @@ type fakeLibraryService struct {
 func (f *fakeLibraryService) ListFeeds(context.Context, int) ([]library.Feed, error) {
 	return f.listFeeds, nil
 }
-func (f *fakeLibraryService) AddFeed(ctx context.Context, userID int, input library.CreateFeedInput) (library.Feed, error) {
+func (f *fakeLibraryService) AddFeed(ctx context.Context, userID int, input library.CreateFeedInput) (library.AddFeedResult, error) {
 	return f.addFeed(ctx, userID, input)
 }
 func (f *fakeLibraryService) DeleteFeed(ctx context.Context, userID, feedID int) error {

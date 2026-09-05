@@ -16,6 +16,11 @@ type Feed struct {
 	UserID int
 }
 
+type AddFeedResult struct {
+	Feed
+	Created bool
+}
+
 type Item struct {
 	ID     int
 	FeedID int
@@ -43,7 +48,7 @@ type CreateFeedInput struct {
 
 type FeedRepository interface {
 	List(ctx context.Context, userID int) ([]Feed, error)
-	Add(ctx context.Context, userID int, input CreateFeedInput) (Feed, error)
+	Add(ctx context.Context, userID int, input CreateFeedInput) (AddFeedResult, error)
 	Delete(ctx context.Context, userID, feedID int) error
 }
 
@@ -74,7 +79,7 @@ func (s *Service) ListFeeds(ctx context.Context, userID int) ([]Feed, error) {
 	return feeds, nil
 }
 
-func (s *Service) AddFeed(ctx context.Context, userID int, input CreateFeedInput) (Feed, error) {
+func (s *Service) AddFeed(ctx context.Context, userID int, input CreateFeedInput) (AddFeedResult, error) {
 	return s.feeds.Add(ctx, userID, input)
 }
 

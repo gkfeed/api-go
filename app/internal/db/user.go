@@ -15,7 +15,7 @@ func GetUserFromDB(name string) (models.User, error) {
 	}
 	var user models.User
 	err = database.QueryRow(
-		"SELECT * FROM users WHERE name = ?",
+		"SELECT id, name, hashed_password FROM users WHERE name = $1",
 		name,
 	).Scan(&user.ID, &user.Name, &user.HashedPassword)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -35,7 +35,7 @@ func GetUserFromDBByID(id int) (models.User, error) {
 	}
 	var user models.User
 	err = database.QueryRow(
-		"SELECT id, name, hashed_password FROM users WHERE id = ?",
+		"SELECT id, name, hashed_password FROM users WHERE id = $1",
 		id,
 	).Scan(&user.ID, &user.Name, &user.HashedPassword)
 	if errors.Is(err, sql.ErrNoRows) {

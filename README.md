@@ -1,27 +1,37 @@
 # GKFeed API
 
-GKFeed is a small Go HTTP API that stores feed subscriptions and items in SQLite and can expose a user's items as JSON or RSS.
+GKFeed is a small Go HTTP API that stores feed subscriptions and items in PostgreSQL and can expose a user's items as JSON or RSS.
 
 ## Requirements
 
-- Go 1.24 or newer
-- A SQLite database with the GKFeed schema
-- A C compiler for `github.com/mattn/go-sqlite3`
+- Go 1.25 or newer
+- PostgreSQL provisioned by [gkfeed/infra](https://github.com/gkfeed/infra)
+- A login with membership in the infra-owned `gkfeed_api` role
+- A C compiler for the SQLite test fixtures
 
 ## Development
 
-The default development configuration expects the database at `data/db.sqlite` from the repository root.
+Set `GKFEED_DATABASE_URL` to your PostgreSQL application connection URL and
+`GKFEED_JWT_SECRET` to a random secret of at least 32 bytes.
 
-> **Back up the SQLite database before installing this version.** On startup,
-> the application permanently deletes items represented by valid legacy
-> `deleted_items` tombstones and then drops the `deleted_items` table. This
-> migration is automatic, transactional, idempotent, and irreversible.
+Do not deploy this branch as an intermediate SQLite release. Before merge or
+deployment, confirm the infra schema and grants, importer completion, sequence
+synchronization, and cutover checks.
+
+Infra owns all DDL. Startup only reads `public.schema_migrations` and requires
+`20260904184133_create_canonical_schema` and
+`20260905082946_add_application_roles`. Missing migrations or an unreadable
+registry prevent startup. Later migrations are allowed.
+
+The importer owns legacy password conversion and deleted-item tombstone
+processing. The API never creates tables or migrates legacy data. SQLite is
+used only for local test fixtures.
 
 ```sh
 make dev
 ```
 
-The API listens on <http://localhost:8086>. Most routes require HTTP Basic authentication using credentials stored in the `users` table. The `hashed_password` column stores PHC-formatted Argon2id hashes; plaintext passwords from an existing database are converted automatically during startup migration.
+The API listens on <http://localhost:8086>. Most routes require HTTP Basic authentication using credentials stored in the `users` table. The `hashed_password` column stores PHC-formatted Argon2id hashes; the importer converts legacy plaintext passwords before cutover. A null password is valid for a passwordless user and Basic Auth rejects it with `401 Unauthorized`. Normal password login verifies Argon2id hashes.
 
 Run the local quality checks with:
 
@@ -39,7 +49,7 @@ Configuration is read from environment variables at startup:
 | Variable | Default | Description |
 | --- | --- | --- |
 | `GKFEED_ADDRESS` | `:8086` | HTTP server listen address |
-| `GKFEED_DB_PATH` | `../data/db.sqlite` | SQLite path relative to the `app` working directory |
+| `GKFEED_DATABASE_URL` | none (required) | PostgreSQL application connection URL |
 | `GKFEED_ALLOWED_ORIGINS` | Localhost development origins | Comma-separated CORS origins |
 | `GKFEED_JWT_SECRET` | none (required) | Cryptographically random JWT signing secret of at least 32 bytes |
 
@@ -50,7 +60,12 @@ export GKFEED_JWT_SECRET="$(openssl rand -base64 32)"
 docker compose up --build -d
 ```
 
-Docker Compose mounts `~/.local/share/gkfeed/data` at `/data` and configures the API to use `/data/db.sqlite`.
+Docker Compose requires `GKFEED_DATABASE_URL` for an externally provisioned
+PostgreSQL database. It does not start a database or run migrations.
+The deployment workflow runs tests on pushes to `master`, but deployment
+requires a manual run with `cutover_ready` confirmed. Confirm that the infra
+schema, grants, importer, sequence synchronization, and cutover checks are
+complete before selecting that input.
 
 ## API routes
 
@@ -74,3 +89,28 @@ The deprecated `/api/v1/add_deleted_items` endpoint no longer reads its body or
 changes data. Authenticated requests receive a JSON `410 Gone` response pointing
 clients to `DELETE /api/v1/items/{id}`; unauthenticated requests still receive
 `401 Unauthorized`.
+
+Repeated feed creation uses `(user_id, url, type)` as its identity and returns the
+existing feed with `created: false`. The original title remains unchanged.
+Different users or feed types have separate feeds even when their URLs match.
+
+User deletion is out of scope. The infra contract rejects deleting users with
+dependent feeds, credentials, or tokens.
+
+
+## PostgreSQL contract tests
+
+Provision a disposable PostgreSQL 17 database with infra's pinned
+`make migrate` and confirm `make status` reports no pending migrations. Then run:
+
+```sh
+GKFEED_TEST_DATABASE_URL='<disposable operator connection URL>' make check
+```
+
+This opt-in suite truncates users and dependent application data. Never point
+it at a shared or production database. The operator connection seeds fixtures;
+repository and auth operations use `SET ROLE gkfeed_api` through pgx connection
+parameters. Tests cover concurrent feed creation across multiple connections,
+nullable passwords, WebAuthn lookups, refresh tokens, and application grants.
+Without this variable, `make check` runs local fixtures and skips PostgreSQL
+integration tests.

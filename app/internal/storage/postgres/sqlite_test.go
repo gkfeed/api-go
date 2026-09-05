@@ -1,4 +1,4 @@
-package sqlite
+package postgres
 
 import (
 	"database/sql"
@@ -9,9 +9,10 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	"gkfeed/api/internal/library"
 	"gkfeed/api/internal/storage/repositorytest"
+	"gkfeed/api/internal/testschema"
 )
 
-func TestSQLiteLibraryRepositoryContract(t *testing.T) {
+func TestLibraryRepositoryWithSQLiteFixtures(t *testing.T) {
 	repositorytest.Run(t, func(t *testing.T) repositorytest.Fixture {
 		database := newTestDB(t)
 		return repositorytest.Fixture{
@@ -43,15 +44,13 @@ func TestFeedDeleteRollsBackOnFailure(t *testing.T) {
 
 func newTestDB(t *testing.T) *sql.DB {
 	t.Helper()
-	database, err := sql.Open("sqlite3", t.TempDir()+"/test.sqlite")
+	database, err := sql.Open("sqlite3", t.TempDir()+"/test.sqlite?_busy_timeout=5000")
 	if err != nil {
 		t.Fatal(err)
 	}
-	database.SetMaxOpenConns(1)
+	database.SetMaxOpenConns(8)
 	t.Cleanup(func() { database.Close() })
-	if err := InitSchema(t.Context(), database); err != nil {
-		t.Fatal(err)
-	}
+	testschema.Init(t, database)
 	return database
 }
 

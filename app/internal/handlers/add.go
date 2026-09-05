@@ -38,5 +38,5 @@ func (h *LibraryHandler) HandleAddFeed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, feedMutationResponse{Created: true, Item: toFeedDTO(feed)})
+	writeJSON(w, feedMutationResponse{Created: feed.Created, Item: toFeedDTO(feed.Feed)})
 }
