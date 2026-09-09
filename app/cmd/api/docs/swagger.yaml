@@ -1,12 +1,12 @@
 definitions:
-  gkfeed_api_internal_handlers.feedMutationResponse:
+  handlers.feedMutationResponse:
     properties:
       created:
         type: boolean
       item:
         $ref: '#/definitions/models.Feed'
     type: object
-  gkfeed_api_internal_handlers.getItemsResponse:
+  handlers.getItemsResponse:
     properties:
       items:
         items:
@@ -15,40 +15,34 @@ definitions:
       next_cursor:
         type: integer
     type: object
-  gkfeed_api_internal_handlers.refreshRequest:
+  handlers.loginRequest:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    type: object
+  handlers.refreshRequest:
     properties:
       refresh_token:
         type: string
     type: object
-  gkfeed_api_internal_handlers.registerBeginRequest:
+  handlers.registerBeginRequest:
     properties:
       name:
         type: string
     type: object
-  internal_handlers.feedMutationResponse:
+  handlers.tokenResponse:
     properties:
-      created:
-        type: boolean
-      item:
-        $ref: '#/definitions/models.Feed'
-    type: object
-  internal_handlers.getItemsResponse:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/models.Item'
-        type: array
-      next_cursor:
+      access_token:
+        type: string
+      expires_in:
         type: integer
-    type: object
-  internal_handlers.refreshRequest:
-    properties:
+      refresh_expires_in:
+        type: integer
       refresh_token:
         type: string
-    type: object
-  internal_handlers.registerBeginRequest:
-    properties:
-      name:
+      token_type:
         type: string
     type: object
   models.Feed:
@@ -105,7 +99,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/gkfeed_api_internal_handlers.feedMutationResponse'
+            $ref: '#/definitions/handlers.feedMutationResponse'
         "400":
           description: ""
         "401":
@@ -178,7 +172,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_handlers.feedMutationResponse'
+            $ref: '#/definitions/handlers.feedMutationResponse'
         "400":
           description: ""
         "401":
@@ -191,6 +185,305 @@ paths:
       summary: Add feed by URL
       tags:
       - feeds
+  /api/v1/auth/credentials:
+    get:
+      description: Returns all registered passkeys for the authenticated user.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              allOf:
+              - type: object
+              - properties:
+                  created_at:
+                    type: string
+                  id:
+                    type: string
+                  last_used_at:
+                    type: string
+                  name:
+                    type: string
+                type: object
+            type: array
+        "401":
+          description: ""
+        "500":
+          description: ""
+      security:
+      - BasicAuth: []
+      - BearerAuth: []
+      summary: List passkeys
+      tags:
+      - auth
+  /api/v1/auth/credentials/{id}:
+    delete:
+      description: Removes a specific passkey credential for the authenticated user.
+      parameters:
+      - description: Credential ID (base64url)
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: ""
+        "400":
+          description: ""
+        "401":
+          description: ""
+        "404":
+          description: ""
+        "500":
+          description: ""
+      security:
+      - BasicAuth: []
+      - BearerAuth: []
+      summary: Delete passkey
+      tags:
+      - auth
+  /api/v1/auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Exchanges username and password for a short-lived access token
+        and a rotating refresh token.
+      parameters:
+      - description: Credentials
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.loginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.tokenResponse'
+        "400":
+          description: ""
+        "401":
+          description: ""
+        "500":
+          description: ""
+      summary: Login with a password
+      tags:
+      - auth
+  /api/v1/auth/login/begin:
+    post:
+      description: Starts discoverable WebAuthn login, returns assertion options for
+        the browser.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+        "500":
+          description: ""
+      summary: Begin passkey login
+      tags:
+      - auth
+  /api/v1/auth/login/finish:
+    post:
+      consumes:
+      - application/json
+      description: Completes WebAuthn authentication, returns an access/refresh token
+        pair.
+      parameters:
+      - description: WebAuthn assertion response
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - type: object
+            - properties:
+                access_token:
+                  type: string
+                credential_id:
+                  type: string
+                refresh_token:
+                  type: string
+              type: object
+        "400":
+          description: ""
+        "500":
+          description: ""
+      summary: Finish passkey login
+      tags:
+      - auth
+  /api/v1/auth/logout:
+    post:
+      consumes:
+      - application/json
+      description: Revokes the refresh-token family associated with the supplied token.
+      parameters:
+      - description: Refresh token
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.refreshRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: ""
+        "400":
+          description: ""
+        "500":
+          description: ""
+      summary: Logout
+      tags:
+      - auth
+  /api/v1/auth/logout-all:
+    post:
+      description: Revokes every refresh token and access session for the authenticated
+        user.
+      responses:
+        "204":
+          description: ""
+        "401":
+          description: ""
+        "500":
+          description: ""
+      security:
+      - BasicAuth: []
+      - BearerAuth: []
+      summary: Logout all sessions
+      tags:
+      - auth
+  /api/v1/auth/me:
+    get:
+      description: Returns the authenticated user's ID and name.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - type: object
+            - properties:
+                id:
+                  type: integer
+                name:
+                  type: string
+              type: object
+        "401":
+          description: ""
+      security:
+      - BasicAuth: []
+      - BearerAuth: []
+      summary: Current user
+      tags:
+      - auth
+  /api/v1/auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Rotates a refresh token and returns a new access/refresh token
+        pair.
+      parameters:
+      - description: Refresh token
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.refreshRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.tokenResponse'
+        "400":
+          description: ""
+        "401":
+          description: ""
+        "500":
+          description: ""
+      summary: Refresh access token
+      tags:
+      - auth
+  /api/v1/auth/register/begin:
+    post:
+      consumes:
+      - application/json
+      description: Starts WebAuthn registration, returns creation options for the
+        browser.
+      parameters:
+      - description: Optional name for the passkey
+        in: body
+        name: body
+        schema:
+          $ref: '#/definitions/handlers.registerBeginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+        "401":
+          description: ""
+        "500":
+          description: ""
+      security:
+      - BasicAuth: []
+      - BearerAuth: []
+      summary: Begin passkey registration
+      tags:
+      - auth
+  /api/v1/auth/register/finish:
+    post:
+      consumes:
+      - application/json
+      description: Completes WebAuthn registration with the attestation response from
+        the browser.
+      parameters:
+      - description: WebAuthn attestation response
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - type: object
+            - properties:
+                id:
+                  type: string
+                name:
+                  type: string
+              type: object
+        "400":
+          description: ""
+        "401":
+          description: ""
+        "500":
+          description: ""
+      security:
+      - BasicAuth: []
+      - BearerAuth: []
+      summary: Finish passkey registration
+      tags:
+      - auth
   /api/v1/delete:
     delete:
       description: Deletes a feed by ID. Only the feed owner can delete it.
@@ -278,7 +571,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_handlers.getItemsResponse'
+            $ref: '#/definitions/handlers.getItemsResponse'
         "400":
           description: ""
         "401":
@@ -293,7 +586,8 @@ paths:
       - items
   /api/v1/item:
     get:
-      description: Returns a single item with its parent feed for the authenticated user.
+      description: Returns a single item with its parent feed for the authenticated
+        user.
       parameters:
       - description: Item ID
         in: query
@@ -348,258 +642,6 @@ paths:
       summary: List feeds
       tags:
       - feeds
-  /api/v1/auth/credentials:
-    get:
-      description: Returns all registered passkeys for the authenticated user.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              allOf:
-              - type: object
-              - properties:
-                  created_at:
-                    type: string
-                  id:
-                    type: string
-                  last_used_at:
-                    type: string
-                  name:
-                    type: string
-                type: object
-            type: array
-        "401":
-          description: ""
-        "500":
-          description: ""
-      security:
-      - BasicAuth: []
-      - BearerAuth: []
-      summary: List passkeys
-      tags:
-      - auth
-  /api/v1/auth/credentials/{id}:
-    delete:
-      description: Removes a specific passkey credential for the authenticated user.
-      parameters:
-      - description: Credential ID (base64url)
-        in: path
-        name: id
-        required: true
-        type: string
-      responses:
-        "204":
-          description: ""
-        "400":
-          description: ""
-        "401":
-          description: ""
-        "404":
-          description: ""
-        "500":
-          description: ""
-      security:
-      - BasicAuth: []
-      - BearerAuth: []
-      summary: Delete passkey
-      tags:
-      - auth
-  /api/v1/auth/login/begin:
-    post:
-      description: Starts discoverable WebAuthn login, returns assertion options for
-        the browser.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: ""
-        "500":
-          description: ""
-      summary: Begin passkey login
-      tags:
-      - auth
-  /api/v1/auth/login/finish:
-    post:
-      consumes:
-      - application/json
-      description: Completes WebAuthn authentication, returns a JWT access/refresh
-        token pair.
-      parameters:
-      - description: WebAuthn assertion response
-        in: body
-        name: body
-        required: true
-        schema:
-          type: object
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - type: object
-            - properties:
-                access_token:
-                  type: string
-                credential_id:
-                  type: string
-                refresh_token:
-                  type: string
-              type: object
-        "400":
-          description: ""
-        "500":
-          description: ""
-      summary: Finish passkey login
-      tags:
-      - auth
-  /api/v1/auth/logout:
-    post:
-      description: Invalidates all refresh tokens for the authenticated user.
-      responses:
-        "204":
-          description: ""
-        "401":
-          description: ""
-        "500":
-          description: ""
-      security:
-      - BasicAuth: []
-      - BearerAuth: []
-      summary: Logout
-      tags:
-      - auth
-  /api/v1/auth/me:
-    get:
-      description: Returns the authenticated user's ID and name.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - type: object
-            - properties:
-                id:
-                  type: integer
-                name:
-                  type: string
-              type: object
-        "401":
-          description: ""
-      security:
-      - BasicAuth: []
-      - BearerAuth: []
-      summary: Current user
-      tags:
-      - auth
-  /api/v1/auth/refresh:
-    post:
-      consumes:
-      - application/json
-      description: Exchanges a valid refresh token for a new access/refresh token
-        pair. Old refresh token is invalidated.
-      parameters:
-      - description: Refresh token
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/internal_handlers.refreshRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - type: object
-            - properties:
-                access_token:
-                  type: string
-                refresh_token:
-                  type: string
-              type: object
-        "400":
-          description: ""
-        "401":
-          description: ""
-        "500":
-          description: ""
-      summary: Refresh access token
-      tags:
-      - auth
-  /api/v1/auth/register/begin:
-    post:
-      consumes:
-      - application/json
-      description: Starts WebAuthn registration, returns creation options for the
-        browser.
-      parameters:
-      - description: Optional name for the passkey
-        in: body
-        name: body
-        schema:
-          $ref: '#/definitions/internal_handlers.registerBeginRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: ""
-        "401":
-          description: ""
-        "500":
-          description: ""
-      security:
-      - BasicAuth: []
-      - BearerAuth: []
-      summary: Begin passkey registration
-      tags:
-      - auth
-  /api/v1/auth/register/finish:
-    post:
-      consumes:
-      - application/json
-      description: Completes WebAuthn registration with the attestation response from
-        the browser.
-      parameters:
-      - description: WebAuthn attestation response
-        in: body
-        name: body
-        required: true
-        schema:
-          type: object
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - type: object
-            - properties:
-                id:
-                  type: string
-                name:
-                  type: string
-              type: object
-        "400":
-          description: ""
-        "401":
-          description: ""
-        "500":
-          description: ""
-      security:
-      - BasicAuth: []
-      - BearerAuth: []
-      summary: Finish passkey registration
-      tags:
-      - auth
 securityDefinitions:
   BasicAuth:
     type: basic

@@ -1,7 +1,6 @@
 package config
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -13,8 +12,7 @@ const (
 	addressEnvironmentVariable           = "GKFEED_ADDRESS"
 	databaseEnvironmentVariable          = "GKFEED_DB_PATH"
 	allowedOriginsEnvironmentVariable    = "GKFEED_ALLOWED_ORIGINS"
-	jwtSecretEnvironmentVariable         = "GKFEED_JWT_SECRET"
-	jwtAccessTTLEnvironmentVariable      = "GKFEED_JWT_ACCESS_TTL"
+	accessTTLEnvironmentVariable         = "GKFEED_ACCESS_TTL"
 	jwtRefreshTTLEnvironmentVariable     = "GKFEED_JWT_REFRESH_TTL"
 	webauthnRPIDEnvironmentVariable      = "GKFEED_WEBAUTHN_RP_ID"
 	webauthnRPOriginEnvironmentVariable  = "GKFEED_WEBAUTHN_RP_ORIGIN"
@@ -28,9 +26,8 @@ var defaultAllowedOrigins = []string{
 }
 
 const (
-	minJWTSecretLength       = 32
-	defaultAccessTokenTTL    = 15 * time.Minute
-	defaultRefreshTokenTTL   = 720 * time.Hour
+	defaultAccessTokenTTL    = 30 * time.Minute
+	defaultRefreshTokenTTL   = 90 * 24 * time.Hour
 	defaultWebAuthnRPDisplay = "GKFeed"
 )
 
@@ -40,7 +37,6 @@ type Config struct {
 	AllowedOrigins    []string
 	ReadHeaderTimeout time.Duration
 
-	JWTSecret       string
 	AccessTokenTTL  time.Duration
 	RefreshTokenTTL time.Duration
 
@@ -49,24 +45,28 @@ type Config struct {
 	WebAuthnRPDisplay string
 }
 
-func Load() (Config, error) {
-	jwtSecret := strings.TrimSpace(os.Getenv(jwtSecretEnvironmentVariable))
-	if len(jwtSecret) < minJWTSecretLength {
-		return Config{}, fmt.Errorf(
-			"%s must be explicitly set to a cryptographically random value of at least %d bytes",
-			jwtSecretEnvironmentVariable,
-			minJWTSecretLength,
-		)
+func (c Config) EffectiveAccessTokenTTL() time.Duration {
+	if c.AccessTokenTTL > 0 {
+		return c.AccessTokenTTL
 	}
+	return defaultAccessTokenTTL
+}
 
+func (c Config) EffectiveRefreshTokenTTL() time.Duration {
+	if c.RefreshTokenTTL > 0 {
+		return c.RefreshTokenTTL
+	}
+	return defaultRefreshTokenTTL
+}
+
+func Load() (Config, error) {
 	return Config{
 		Address:           valueOrDefault(addressEnvironmentVariable, ":8086"),
 		DatabasePath:      valueOrDefault(databaseEnvironmentVariable, filepath.Join("..", "data", "db.sqlite")),
 		AllowedOrigins:    allowedOrigins(),
 		ReadHeaderTimeout: 5 * time.Second,
 
-		JWTSecret:       jwtSecret,
-		AccessTokenTTL:  durationOrDefault(jwtAccessTTLEnvironmentVariable, defaultAccessTokenTTL),
+		AccessTokenTTL:  durationOrDefault(accessTTLEnvironmentVariable, defaultAccessTokenTTL),
 		RefreshTokenTTL: durationOrDefault(jwtRefreshTTLEnvironmentVariable, defaultRefreshTokenTTL),
 
 		WebAuthnRPID:      os.Getenv(webauthnRPIDEnvironmentVariable),

@@ -55,7 +55,8 @@ func main() {
 
 func newHandler(configuration config.Config) http.Handler {
 	router := mux.NewRouter()
-	authenticate := auth.Authenticate(configuration)
+	sessions := auth.NewSessionStore(configuration.EffectiveAccessTokenTTL())
+	authenticate := auth.Authenticate(sessions)
 
 	router.PathPrefix("/api/swagger/").Handler(httpSwagger.Handler(
 		httpSwagger.URL("doc.json"),
@@ -80,15 +81,19 @@ func newHandler(configuration config.Config) http.Handler {
 	authRouter := api.PathPrefix("/auth").Subrouter()
 	authRouter.HandleFunc("/me", authenticate(handlers.HandleMe)).Methods(http.MethodGet)
 
+	authHandler := handlers.NewAuthHandlerWithSessions(configuration, nil, sessions)
+	authRouter.HandleFunc("/login", authHandler.Login).Methods(http.MethodPost)
+	authRouter.HandleFunc("/refresh", authHandler.Refresh).Methods(http.MethodPost)
+	authRouter.HandleFunc("/logout", authHandler.Logout).Methods(http.MethodPost)
+	authRouter.HandleFunc("/logout-all", authenticate(authHandler.LogoutAll)).Methods(http.MethodPost)
+
 	if webAuthnService, err := auth.NewWebAuthnService(configuration); err == nil {
-		authHandler := handlers.NewAuthHandler(configuration, webAuthnService)
+		authHandler = handlers.NewAuthHandlerWithSessions(configuration, webAuthnService, sessions)
 
 		authRouter.HandleFunc("/register/begin", authenticate(authHandler.BeginRegistration)).Methods(http.MethodPost)
 		authRouter.HandleFunc("/register/finish", authenticate(authHandler.FinishRegistration)).Methods(http.MethodPost)
 		authRouter.HandleFunc("/login/begin", authHandler.BeginLogin).Methods(http.MethodPost)
 		authRouter.HandleFunc("/login/finish", authHandler.FinishLogin).Methods(http.MethodPost)
-		authRouter.HandleFunc("/refresh", authHandler.Refresh).Methods(http.MethodPost)
-		authRouter.HandleFunc("/logout", authenticate(authHandler.Logout)).Methods(http.MethodPost)
 		authRouter.HandleFunc("/credentials", authenticate(authHandler.ListCredentials)).Methods(http.MethodGet)
 		authRouter.HandleFunc("/credentials/{id}", authenticate(authHandler.DeleteCredential)).Methods(http.MethodDelete)
 	}

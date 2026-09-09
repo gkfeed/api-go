@@ -128,6 +128,34 @@ func TestMigratePasswords(t *testing.T) {
 	}
 }
 
+func TestRunMigrationsDropsLegacyRefreshTokens(t *testing.T) {
+	useTestDatabase(t)
+
+	if err := RunMigrations(); err != nil {
+		t.Fatalf("RunMigrations() returned error: %v", err)
+	}
+
+	database, err := getDB()
+	if err != nil {
+		t.Fatalf("open test database: %v", err)
+	}
+	defer database.Close()
+
+	var tableName string
+	err = database.QueryRow(
+		"SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'refresh_tokens'",
+	).Scan(&tableName)
+	if !errors.Is(err, sql.ErrNoRows) {
+		t.Fatalf("legacy refresh_tokens table lookup returned %v, want sql.ErrNoRows", err)
+	}
+
+	if err := database.QueryRow(
+		"SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'auth_refresh_tokens'",
+	).Scan(&tableName); err != nil {
+		t.Fatalf("auth_refresh_tokens table lookup returned %v", err)
+	}
+}
+
 func TestMigratePasswordsLeavesNullPasswordsAlone(t *testing.T) {
 	useTestDatabase(t)
 
