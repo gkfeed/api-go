@@ -48,6 +48,27 @@ func TestItemsPage(t *testing.T) {
 	}
 }
 
+func TestOptionalPositiveQueryInt(t *testing.T) {
+	tests := []struct {
+		query     string
+		wantValue *int
+		wantOK    bool
+	}{
+		{wantOK: true},
+		{query: "?feed_id=12", wantValue: intPointer(12), wantOK: true},
+		{query: "?feed_id=0"},
+		{query: "?feed_id=invalid"},
+	}
+	for _, test := range tests {
+		request := httptest.NewRequest(http.MethodGet, "/get_items"+test.query, nil)
+		response := httptest.NewRecorder()
+		value, ok := optionalPositiveQueryInt(response, request, "feed_id")
+		if ok != test.wantOK || !equalIntPointers(value, test.wantValue) {
+			t.Fatalf("optionalPositiveQueryInt(%q) = (%v, %t), want (%v, %t)", test.query, value, ok, test.wantValue, test.wantOK)
+		}
+	}
+}
+
 func intPointer(value int) *int {
 	return &value
 }

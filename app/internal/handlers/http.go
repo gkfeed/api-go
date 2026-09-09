@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -26,9 +27,19 @@ func authenticatedUser(w http.ResponseWriter, r *http.Request) (models.User, boo
 }
 
 func writeJSON(w http.ResponseWriter, value any) {
+	writeJSONStatus(w, http.StatusOK, value)
+}
+
+func writeJSONStatus(w http.ResponseWriter, status int, value any) {
+	var response bytes.Buffer
+	if err := json.NewEncoder(&response).Encode(value); err != nil {
+		writeInternalServerError(w, err)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(value); err != nil {
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+	w.WriteHeader(status)
+	if _, err := w.Write(response.Bytes()); err != nil {
+		log.Printf("write response: %v", err)
 	}
 }
 

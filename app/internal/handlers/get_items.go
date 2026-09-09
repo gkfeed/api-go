@@ -21,6 +21,7 @@ type getItemsResponse struct {
 // @Produce      json
 // @Param        limit   query     int  false  "Items per page (default 100)"
 // @Param        cursor  query     int  false  "Pagination cursor (item ID)"
+// @Param        feed_id query     int  false  "Only return items from this owned feed"
 // @Security     BasicAuth
 // @Security     BearerAuth
 // @Success      200     {object}  getItemsResponse
@@ -39,13 +40,28 @@ func HandleGetItems(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	items, err := db.GetUserItemsPage(user.ID, cursor, limit+1)
+	feedID, ok := optionalPositiveQueryInt(w, r, "feed_id")
+	if !ok {
+		return
+	}
+	items, err := db.GetUserItemsPageForFeed(user.ID, feedID, cursor, limit+1)
 	if err != nil {
 		writeInternalServerError(w, err)
 		return
 	}
 
 	writeJSON(w, itemsPage(items, limit))
+}
+
+func optionalPositiveQueryInt(w http.ResponseWriter, r *http.Request, name string) (*int, bool) {
+	if r.URL.Query().Get(name) == "" {
+		return nil, true
+	}
+	value, ok := positiveQueryInt(w, r, name, 0, false)
+	if !ok {
+		return nil, false
+	}
+	return &value, true
 }
 
 func itemsPageParameters(w http.ResponseWriter, r *http.Request) (int, *int, bool) {

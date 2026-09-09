@@ -1,12 +1,12 @@
 definitions:
-  gkfeed_api_internal_handlers.feedMutationResponse:
+  handlers.feedMutationResponse:
     properties:
       created:
         type: boolean
       item:
         $ref: '#/definitions/models.Feed'
     type: object
-  gkfeed_api_internal_handlers.getItemsResponse:
+  handlers.getItemsResponse:
     properties:
       items:
         items:
@@ -15,41 +15,41 @@ definitions:
       next_cursor:
         type: integer
     type: object
-  gkfeed_api_internal_handlers.refreshRequest:
+  handlers.refreshRequest:
     properties:
       refresh_token:
         type: string
     type: object
-  gkfeed_api_internal_handlers.registerBeginRequest:
+  handlers.registerBeginRequest:
     properties:
       name:
         type: string
     type: object
-  internal_handlers.feedMutationResponse:
+  handlers.shareItemRequest:
     properties:
-      created:
-        type: boolean
-      item:
-        $ref: '#/definitions/models.Feed'
-    type: object
-  internal_handlers.getItemsResponse:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/models.Item'
-        type: array
-      next_cursor:
+      item_id:
+        type: integer
+      note:
+        type: string
+      recipient_user_id:
         type: integer
     type: object
-  internal_handlers.refreshRequest:
+  models.Delivery:
     properties:
-      refresh_token:
+      created_at:
         type: string
-    type: object
-  internal_handlers.registerBeginRequest:
-    properties:
-      name:
+      delivery_id:
         type: string
+      feed_id:
+        type: integer
+      item_id:
+        type: integer
+      note:
+        type: string
+      recipient_user_id:
+        type: integer
+      sender_user_id:
+        type: integer
     type: object
   models.Feed:
     properties:
@@ -68,6 +68,8 @@ definitions:
     properties:
       date:
         type: string
+      delivery:
+        $ref: '#/definitions/models.ItemDelivery'
       feed_id:
         type: integer
       id:
@@ -78,6 +80,17 @@ definitions:
         type: string
       title:
         type: string
+    type: object
+  models.ItemDelivery:
+    properties:
+      created_at:
+        type: string
+      delivery_id:
+        type: string
+      note:
+        type: string
+      sender_user_id:
+        type: integer
     type: object
 info:
   contact:
@@ -91,7 +104,8 @@ paths:
     post:
       consumes:
       - application/json
-      description: Adds a new RSS/YouTube/TikTok feed for the authenticated user.
+      description: Adds a feed for the authenticated user. Type inbox creates or returns
+        the user's single Inbox feed.
       parameters:
       - description: Feed to add (title, type, url)
         in: body
@@ -105,7 +119,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/gkfeed_api_internal_handlers.feedMutationResponse'
+            $ref: '#/definitions/handlers.feedMutationResponse'
         "400":
           description: ""
         "401":
@@ -178,7 +192,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_handlers.feedMutationResponse'
+            $ref: '#/definitions/handlers.feedMutationResponse'
         "400":
           description: ""
         "401":
@@ -189,163 +203,6 @@ paths:
       - BasicAuth: []
       - BearerAuth: []
       summary: Add feed by URL
-      tags:
-      - feeds
-  /api/v1/delete:
-    delete:
-      description: Deletes a feed by ID. Only the feed owner can delete it.
-      parameters:
-      - description: Feed ID
-        in: query
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - type: object
-            - properties:
-                deleted:
-                  type: boolean
-              type: object
-        "400":
-          description: ""
-        "401":
-          description: ""
-        "404":
-          description: ""
-        "500":
-          description: ""
-      security:
-      - BasicAuth: []
-      - BearerAuth: []
-      summary: Delete feed
-      tags:
-      - feeds
-  /api/v1/feed:
-    get:
-      description: Returns all user items as an RSS 2.0 XML feed.
-      produces:
-      - application/rss+xml
-      responses:
-        "200":
-          description: ""
-        "401":
-          description: ""
-        "500":
-          description: ""
-      security:
-      - BasicAuth: []
-      - BearerAuth: []
-      summary: Get RSS feed
-      tags:
-      - feeds
-  /api/v1/feed_types:
-    get:
-      description: Returns all feed type identifiers supported by the parser.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              type: string
-            type: array
-      summary: List feed types
-      tags:
-      - feeds
-  /api/v1/get_items:
-    get:
-      description: Returns paginated items for the authenticated user. Supports cursor-based
-        pagination.
-      parameters:
-      - description: Items per page (default 100)
-        in: query
-        name: limit
-        type: integer
-      - description: Pagination cursor (item ID)
-        in: query
-        name: cursor
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/internal_handlers.getItemsResponse'
-        "400":
-          description: ""
-        "401":
-          description: ""
-        "500":
-          description: ""
-      security:
-      - BasicAuth: []
-      - BearerAuth: []
-      summary: Get items
-      tags:
-      - items
-  /api/v1/item:
-    get:
-      description: Returns a single item with its parent feed for the authenticated user.
-      parameters:
-      - description: Item ID
-        in: query
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - type: object
-            - properties:
-                feed:
-                  type: object
-                item:
-                  type: object
-              type: object
-        "400":
-          description: ""
-        "401":
-          description: ""
-        "404":
-          description: ""
-      security:
-      - BasicAuth: []
-      - BearerAuth: []
-      summary: Get item by ID
-      tags:
-      - items
-  /api/v1/list:
-    get:
-      description: Returns all feeds for the authenticated user.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              type: object
-            type: array
-        "401":
-          description: ""
-        "500":
-          description: ""
-      security:
-      - BasicAuth: []
-      - BearerAuth: []
-      summary: List feeds
       tags:
       - feeds
   /api/v1/auth/credentials:
@@ -510,7 +367,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/internal_handlers.refreshRequest'
+          $ref: '#/definitions/handlers.refreshRequest'
       produces:
       - application/json
       responses:
@@ -545,7 +402,7 @@ paths:
         in: body
         name: body
         schema:
-          $ref: '#/definitions/internal_handlers.registerBeginRequest'
+          $ref: '#/definitions/handlers.registerBeginRequest'
       produces:
       - application/json
       responses:
@@ -600,6 +457,220 @@ paths:
       summary: Finish passkey registration
       tags:
       - auth
+  /api/v1/delete:
+    delete:
+      description: Deletes a feed by ID. Only the feed owner can delete it.
+      parameters:
+      - description: Feed ID
+        in: query
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - type: object
+            - properties:
+                deleted:
+                  type: boolean
+              type: object
+        "400":
+          description: ""
+        "401":
+          description: ""
+        "404":
+          description: ""
+        "409":
+          description: ""
+        "500":
+          description: ""
+      security:
+      - BasicAuth: []
+      - BearerAuth: []
+      summary: Delete feed
+      tags:
+      - feeds
+  /api/v1/feed:
+    get:
+      description: Returns all user items as an RSS 2.0 XML feed.
+      produces:
+      - application/rss+xml
+      responses:
+        "200":
+          description: ""
+        "401":
+          description: ""
+        "500":
+          description: ""
+      security:
+      - BasicAuth: []
+      - BearerAuth: []
+      summary: Get RSS feed
+      tags:
+      - feeds
+  /api/v1/feed_types:
+    get:
+      description: Returns all feed type identifiers available to the API. Inbox is
+        an internal feed and is not parser-backed.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: string
+            type: array
+      summary: List feed types
+      tags:
+      - feeds
+  /api/v1/get_items:
+    get:
+      description: Returns paginated items for the authenticated user. Supports cursor-based
+        pagination.
+      parameters:
+      - description: Items per page (default 100)
+        in: query
+        name: limit
+        type: integer
+      - description: Pagination cursor (item ID)
+        in: query
+        name: cursor
+        type: integer
+      - description: Only return items from this owned feed
+        in: query
+        name: feed_id
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.getItemsResponse'
+        "400":
+          description: ""
+        "401":
+          description: ""
+        "500":
+          description: ""
+      security:
+      - BasicAuth: []
+      - BearerAuth: []
+      summary: Get items
+      tags:
+      - items
+  /api/v1/item:
+    get:
+      description: Returns a single item with its parent feed for the authenticated
+        user.
+      parameters:
+      - description: Item ID
+        in: query
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - type: object
+            - properties:
+                feed:
+                  type: object
+                item:
+                  type: object
+              type: object
+        "400":
+          description: ""
+        "401":
+          description: ""
+        "404":
+          description: ""
+      security:
+      - BasicAuth: []
+      - BearerAuth: []
+      summary: Get item by ID
+      tags:
+      - items
+  /api/v1/list:
+    get:
+      description: Returns all feeds for the authenticated user.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: object
+            type: array
+        "401":
+          description: ""
+        "500":
+          description: ""
+      security:
+      - BasicAuth: []
+      - BearerAuth: []
+      summary: List feeds
+      tags:
+      - feeds
+  /api/v1/shares:
+    post:
+      consumes:
+      - application/json
+      description: Atomically creates an independent item clone and delivery. The
+        clone is read through the normal feed APIs. Network retries must reuse Idempotency-Key.
+      parameters:
+      - description: Client-generated retry key
+        in: header
+        name: Idempotency-Key
+        required: true
+        type: string
+      - description: Share request
+        in: body
+        name: share
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.shareItemRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Delivery'
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Delivery'
+        "400":
+          description: ""
+        "401":
+          description: ""
+        "403":
+          description: ""
+        "404":
+          description: ""
+        "409":
+          description: ""
+        "422":
+          description: ""
+        "500":
+          description: ""
+      security:
+      - BasicAuth: []
+      - BearerAuth: []
+      summary: Share an item into another user's Inbox feed
+      tags:
+      - feeds
 securityDefinitions:
   BasicAuth:
     type: basic
