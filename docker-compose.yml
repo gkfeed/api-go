@@ -9,6 +9,9 @@ services:
       GKFEED_ADDRESS: ":8086"
       GKFEED_DB_PATH: "/data/db.sqlite"
       GKFEED_JWT_SECRET: "${GKFEED_JWT_SECRET:?set GKFEED_JWT_SECRET to a cryptographically random value of at least 32 bytes}"
+      GKFEED_WEBAUTHN_RP_ID: "${GKFEED_WEBAUTHN_RP_ID:-localhost}"
+      GKFEED_WEBAUTHN_RP_ORIGIN: "${GKFEED_WEBAUTHN_RP_ORIGIN:-http://localhost:8086}"
+      GKFEED_WEBAUTHN_RP_DISPLAY: "${GKFEED_WEBAUTHN_RP_DISPLAY:-GKFeed}"
     volumes:
       - ~/.local/share/gkfeed/data:/data
     restart: always

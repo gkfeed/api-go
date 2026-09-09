@@ -2,6 +2,7 @@ package auth
 
 import (
 	"fmt"
+	"strings"
 
 	"gkfeed/api/internal/config"
 	"gkfeed/api/internal/db"
@@ -17,6 +18,13 @@ type WebAuthnService struct {
 }
 
 func NewWebAuthnService(cfg config.Config) (*WebAuthnService, error) {
+	if strings.TrimSpace(cfg.WebAuthnRPID) == "" {
+		return nil, fmt.Errorf("WebAuthn is not configured: set GKFEED_WEBAUTHN_RP_ID")
+	}
+	if strings.TrimSpace(cfg.WebAuthnRPOrigin) == "" {
+		return nil, fmt.Errorf("WebAuthn is not configured: set GKFEED_WEBAUTHN_RP_ORIGIN")
+	}
+
 	webAuthn, err := webauthn.New(&webauthn.Config{
 		RPDisplayName: cfg.WebAuthnRPDisplay,
 		RPID:          cfg.WebAuthnRPID,
