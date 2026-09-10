@@ -4,6 +4,12 @@ on:
     branches:
       - master
   workflow_dispatch:
+    inputs:
+      cutover_ready:
+        description: "Infra schema, grants, importer, sequence synchronization, and cutover checks are complete"
+        required: true
+        type: boolean
+        default: false
 jobs:
   test:
     name: Test and vet
@@ -20,6 +26,7 @@ jobs:
         run: make check
 
   deploy:
+    if: github.event_name == 'workflow_dispatch' && inputs.cutover_ready
     needs: test
     runs-on: ubuntu-latest
     steps:

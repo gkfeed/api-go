@@ -8,34 +8,13 @@ import (
 	"gkfeed/api/internal/models"
 )
 
-func InitRefreshTokenSchema() error {
-	database, err := getDB()
-	if err != nil {
-		return fmt.Errorf("open database: %w", err)
-	}
-	defer database.Close()
-
-	_, err = database.Exec(`CREATE TABLE IF NOT EXISTS refresh_tokens (
-		id TEXT PRIMARY KEY,
-		user_id INTEGER NOT NULL,
-		expires_at DATETIME NOT NULL,
-		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-	)`)
-	if err != nil {
-		return fmt.Errorf("create refresh_tokens table: %w", err)
-	}
-	return nil
-}
-
 func StoreRefreshToken(token models.RefreshToken) error {
 	database, err := getDB()
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
-	defer database.Close()
-
 	_, err = database.Exec(
-		"INSERT INTO refresh_tokens (id, user_id, expires_at) VALUES (?, ?, ?)",
+		"INSERT INTO refresh_tokens (id, user_id, expires_at) VALUES ($1, $2, $3)",
 		token.ID, token.UserID, token.ExpiresAt,
 	)
 	if err != nil {
@@ -49,11 +28,9 @@ func GetRefreshToken(id string) (models.RefreshToken, error) {
 	if err != nil {
 		return models.RefreshToken{}, fmt.Errorf("open database: %w", err)
 	}
-	defer database.Close()
-
 	var token models.RefreshToken
 	err = database.QueryRow(
-		"SELECT id, user_id, expires_at, created_at FROM refresh_tokens WHERE id = ?",
+		"SELECT id, user_id, expires_at, created_at FROM refresh_tokens WHERE id = $1",
 		id,
 	).Scan(&token.ID, &token.UserID, &token.ExpiresAt, &token.CreatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -70,9 +47,7 @@ func DeleteRefreshToken(id string) error {
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
-	defer database.Close()
-
-	_, err = database.Exec("DELETE FROM refresh_tokens WHERE id = ?", id)
+	_, err = database.Exec("DELETE FROM refresh_tokens WHERE id = $1", id)
 	if err != nil {
 		return fmt.Errorf("delete refresh token: %w", err)
 	}
@@ -84,9 +59,7 @@ func DeleteUserRefreshTokens(userID int) error {
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
-	defer database.Close()
-
-	_, err = database.Exec("DELETE FROM refresh_tokens WHERE user_id = ?", userID)
+	_, err = database.Exec("DELETE FROM refresh_tokens WHERE user_id = $1", userID)
 	if err != nil {
 		return fmt.Errorf("delete user refresh tokens: %w", err)
 	}
